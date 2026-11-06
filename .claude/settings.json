@@ -1,3 +1,6 @@
 {
-  "outputStyle": "Learning"
+  "outputStyle": "Learning",
+  "enabledPlugins": {
+    "databricks@claude-plugins-official": true
+  }
 }

@@ -1,0 +1,24 @@
+# Declarative Automation Bundle (formerly Asset Bundle): Sanad's Databricks resources as code.
+# The workspace host comes from your CLI profile (~/.databrickscfg), never from this file.
+# Deploy: databricks bundle deploy --profile sanad
+# Run:    databricks bundle run sanad_medallion --profile sanad
+
+bundle:
+  name: sanad
+
+resources:
+  pipelines:
+    sanad_medallion:
+      name: sanad_medallion
+      catalog: sanad
+      schema: bronze # default schema; silver and gold tables name their own schema
+      serverless: true # Free Edition only has serverless compute
+      continuous: false # run when triggered, not 24/7
+      libraries:
+        - glob:
+            include: pipelines/transformations/**
+
+targets:
+  dev:
+    mode: development # names the pipeline "[dev <you>] ..." and keeps it separate from prod
+    default: true

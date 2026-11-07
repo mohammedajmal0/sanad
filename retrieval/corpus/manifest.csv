@@ -1,0 +1,31 @@
+doc_id,title,doc_type,department,effective_date,language
+fin-credit-notes,Credit Note and Refund Policy,policy,finance,2026-01-01,en
+fin-duplicate-invoices,Duplicate Invoice Handling Procedure,policy,finance,2026-03-15,en
+fin-payment-terms,Payment Terms and Credit Hold Policy,policy,finance,2026-01-01,en
+log-delivery-sla,Delivery Service Level Policy,policy,logistics,2026-02-01,en
+log-carrier-performance,Carrier Performance and Penalty Policy,policy,logistics,2026-02-01,en
+cs-returns,Returns and Damaged Goods Policy,policy,customer_service,2026-01-01,en
+cs-complaints,Complaint Handling and Escalation Policy,policy,customer_service,2026-04-01,en
+it-vpn-policy,Remote Access and VPN Policy,policy,it,2026-01-15,en
+it-data-classification,Information Classification and Handling Policy,policy,it,2026-01-15,en
+it-privacy-pdpl,Customer Personal Data Policy (PDPL),policy,it,2026-05-01,en
+kb-vpn-drops-after-update,VPN disconnects every few minutes after the GlobalConnect 6.2 update,kb,it,2026-10-20,en
+kb-password-reset,Password reset and account lockout,kb,it,2026-03-01,en
+kb-erp-access,Requesting access to the ERP,kb,it,2026-03-01,en
+kb-printer-queue,Print jobs stuck in the queue,kb,it,2026-02-10,en
+kb-wifi-after-password-change,Laptop cannot join office Wi-Fi after a password change,kb,it,2026-03-01,en
+kb-mailbox-full,Mailbox full and email archiving,kb,it,2026-02-10,en
+kb-mfa-new-phone,Moving MFA to a new phone,kb,it,2026-06-01,en
+kb-phishing-report,Reporting a suspicious or phishing email,kb,it,2026-04-15,en
+kb-issue-credit-note,How to issue a credit note in the ERP,kb,finance,2026-03-15,en
+kb-invoice-issues-report,Reading the invoice issues report,kb,finance,2026-11-01,en
+kb-invoice-dispute,Customer disputes an invoice amount,kb,finance,2026-05-01,en
+kb-shipment-statuses,Tracking a shipment and reading delivery statuses,kb,logistics,2026-02-01,en
+kb-late-delivery-customer,Late delivery: what to tell the customer,kb,logistics,2026-06-01,en
+kb-jeddah-port-congestion,Jeddah port congestion advisory (Q3 2026),kb,logistics,2026-07-10,en
+kb-carrier-damage-claim,Filing a carrier damage claim,kb,logistics,2026-02-01,en
+kb-customer-lookup,Looking up a customer account and its contacts,kb,customer_service,2026-11-07,en
+kb-duplicate-billing-script,Call script: customer billed twice,kb,customer_service,2026-03-15,en
+kb-address-change,Changing a delivery address,kb,customer_service,2026-02-01,en
+kb-key-accounts,Handling key accounts,kb,customer_service,2026-01-01,en
+kb-order-cancellation,Cancelling an order,kb,customer_service,2026-02-01,en

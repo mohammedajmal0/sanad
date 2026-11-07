@@ -76,7 +76,11 @@ def ticket_trends():
 
 
 @dp.materialized_view(name="gold.customer_360",
-                      comment="One row per account: profile, order history, invoice issues")
+                      comment="One row per account: profile, order history, invoice issues",
+                      # Account managers see only their region (governance/setup.sql).
+                      # Only on this table: nothing in the pipeline reads customer_360, so the
+                      # filter can't leak into another gold table's numbers.
+                      row_filter="ROW FILTER sanad.ops.region_filter ON (region)")
 def customer_360():
     # Aggregate each table per account BEFORE joining. Joining orders to contacts
     # first would repeat every order once per contact and inflate the totals (fan-out).

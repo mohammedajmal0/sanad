@@ -28,7 +28,16 @@ def accounts():
                        "TRY_CAST(created_date AS DATE) AS created_date")
 
 
-@dp.table(name="silver.contacts", comment="Customer contacts; email and phone are PII")
+@dp.table(
+    name="silver.contacts",
+    comment="Customer contacts; email and phone are PII",
+    # The mask lives here, not in an ALTER TABLE: the pipeline owns this table's definition.
+    # It is on silver, not bronze: a mask on bronze would save *** into silver for good.
+    # The function is created by governance/setup.sql, which must run before this pipeline.
+    schema="""contact_id STRING, account_id STRING, full_name STRING,
+              email STRING MASK sanad.ops.mask_pii, phone STRING MASK sanad.ops.mask_pii,
+              title STRING, source_file STRING, ingested_at TIMESTAMP""",
+)
 @dp.expect_or_drop("has_contact_id", "contact_id IS NOT NULL")
 def contacts():
     return from_bronze("crm_contacts", "contact_id", "account_id", "full_name", "email",

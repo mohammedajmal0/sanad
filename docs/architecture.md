@@ -68,7 +68,28 @@ One catalog, `sanad`, with five schemas.
 
 ## Data flows
 
-Filled in during Phases 1 and 3: the ingestion path from generator to gold, and from documents to index.
+### Generator to gold (Phase 1)
+
+One Lakeflow pipeline, `sanad_medallion` ([databricks.yml](../databricks.yml)), builds every layer. Each run only ingests files it hasn't seen, and gold always matches all of silver.
+
+```mermaid
+flowchart LR
+    gen["data_gen/generate.py<br/>CSV + JSONL, seed 42"] --> vol["Volume<br/>sanad.bronze.landing"]
+    vol -- "Auto Loader<br/>new files only" --> bronze["bronze<br/>6 streaming tables, all strings"]
+    bronze -- "TRY_CAST + expectations<br/>new rows only" --> silver["silver<br/>6 streaming tables, typed"]
+    silver -- "batch read<br/>all rows" --> gold["gold<br/>4 materialized views"]
+```
+
+| Gold table | One row per | Read by |
+|---|---|---|
+| `invoice_issues` | invoice to check (duplicate, non-positive amount, future date) | Customer Service |
+| `delivery_sla_by_region` | region × carrier × ship month | Ops Analytics, Customer Service |
+| `ticket_trends` | day × ticket category | Service Desk |
+| `customer_360` | customer account (no contact PII) | Customer Service |
+
+### Documents to index (Phase 3)
+
+Filled in during Phase 3.
 
 ## Identity and auth
 

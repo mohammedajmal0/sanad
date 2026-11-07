@@ -85,3 +85,26 @@
 1. When would you choose warn, drop or fail for a data-quality rule, and who should decide?
 2. Why does one unreadable value show up as a failure under more than one expectation?
 3. Where do dropped rows go, and how would you repair and reprocess them?
+
+### 2026-11-07: Gold layer and the streaming demo
+
+**What we built:** [gold.py](../../pipelines/transformations/gold.py) defines four materialized views: `invoice_issues`, `delivery_sla_by_region`, `ticket_trends` and `customer_360`. The phase gate passed: `invoice_issues` holds exactly `INV-027711` and `INV-050001` (Al-Faris, 1,440.71 SAR, `invoices_for_order = 2`), plus the two warn rows from `break_test.csv`. Q3 2026 late rate: Jeddah 16.2%, others 1.5 to 1.9%, with Red Sea Cargo at 59.3% in Jeddah. Then October's tickets were uploaded and the pipeline ran again. `bronze.itsm_tickets` and `silver.tickets` each wrote 931 rows, the other sources did nothing, and `ticket_trends` refreshed incrementally and showed 30 VPN tickets on Mon 19 Oct. Both business rules (duplicate = an order with 2+ invoices, flag all of them; late = `delivered_date > promised_date`, delivered shipments only) were written by Claude at my request. I must still be able to defend them. An animated walk-through of the run: [Sanad Streaming Demo](https://claude.ai/artifact/DLSmSx75i9B2fak7rfh9UH).
+
+**Key concepts:**
+- Materialized view versus streaming table: an ST appends new rows and never revisits them (a diary). An MV keeps a stored result equal to its query over all rows (a whiteboard). `spark.read` gives an MV and `spark.readStream` gives an ST, and a dataset can't switch type in place.
+- An MV is refreshed when the pipeline runs, not when it's queried. Between runs it can be stale.
+- Cross-row checks (duplicates) belong in gold. Single-row checks belong in silver expectations.
+- Window function: `count("*").over(Window.partitionBy("order_id"))` puts the group count on every row without collapsing rows.
+- Join fan-out: aggregate each fact per account before joining, or totals multiply.
+- Rate denominator: `late / delivered`, not `late / shipments`. In-transit shipments have no outcome yet. Store counts next to rates so they can be re-aggregated as `sum(late) / sum(delivered)`, never `avg(rate)`.
+- Incremental refresh: serverless updated only the changed day × category groups (`GROUP_AGGREGATE`). The `planning_information` event says which technique ran and why.
+- Streaming metrics: an ST's row count is on the RUNNING event "Completed a streaming update", not on COMPLETED.
+
+**Mistakes:**
+- `event_log(TABLE(x))` returns the whole pipeline's log, not just table x's events. Without `origin.flow_name` in the filter, every table "wrote 2,000 rows" (that was `customer_360`). Fixed by filtering on the flow name.
+- TODO(human): add your own.
+
+**Interview questions:**
+1. Why is duplicate-invoice detection a materialized view in gold and not an expectation in silver?
+2. A gold rate looks wrong after you roll monthly rows up to a quarter. What is the likely mistake, and how does the table's design prevent it?
+3. A new file landed and the pipeline ran. How do you prove from the event log that only that file was read, and whether the gold refresh was incremental?

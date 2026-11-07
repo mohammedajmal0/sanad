@@ -11,6 +11,8 @@ I must be able to explain every line in an interview. Learning beats speed.
   data-quality expectations, grants and masks.
 - After each task, append to docs/learning-log/<phase>.md: what we built,
   key concepts, mistakes, and 3 interview questions (questions only).
+- After each task, also update the tracker rows (db collections phases/, tasks/)
+  with the ArtifactData tool. Never republish the page just to change data.
 - Databricks names changed in 2026 (AI Search, Declarative Automation Bundles,
   Genie agents, Agent Bricks CLI). If unsure an API is current, say so and
   check the installed Databricks skills or docs before writing code.
@@ -21,7 +23,8 @@ I must be able to explain every line in an interview. Learning beats speed.
 - Python 3.12, uv, ruff, pytest
 - Agent: LangGraph via Agent Bricks CLI in agent/; tools declared in agent.toml
 - Commands: uv run pytest | agentbricks dev | databricks bundle validate
-- Plan: https://claude.ai/artifact/UND3Btf78UiXs1UUzjeQQT (phases, gates, reading list)
+- Tracker: https://claude.ai/artifact/Qmbx4MFBL9ZacyAP4JQSzV (phases, gates, tasks);
+  reading list in docs/reading-list.md
 
 ## Definition of done
-Tests pass, docs updated, learning-log entry written, and I can explain it.
+Tests pass, docs updated, learning-log entry written, tracker updated, and I can explain it.

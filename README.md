@@ -4,7 +4,7 @@ A governed multi-agent copilot for **Najm Supply Co.**, a fictional B2B distribu
 
 > "I took a business problem from use-case canvas to a production agent with measured quality, cost and adoption."
 
-**Status:** Phase 0, discovery and setup. See the [plan](https://claude.ai/artifact/UND3Btf78UiXs1UUzjeQQT) for all nine phases and the three gates.
+**Status:** see the [tracker](https://claude.ai/artifact/Qmbx4MFBL9ZacyAP4JQSzV) for all nine phases, the three gates and the current task.
 
 ## What this repo will show
 

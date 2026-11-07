@@ -6,7 +6,22 @@
 bundle:
   name: sanad
 
+variables:
+  warehouse_id:
+    description: SQL warehouse that runs the dashboard's queries
+    lookup:
+      warehouse: Serverless Starter Warehouse # found by name at deploy time, so no ID in git
+
 resources:
+  dashboards:
+    sanad_gold:
+      display_name: Najm operations (gold)
+      file_path: dashboards/sanad_gold.lvdash.json
+      warehouse_id: ${var.warehouse_id}
+      dataset_catalog: sanad # dataset queries use bare names (FROM invoice_issues);
+      dataset_schema: gold   # these two fill in the catalog and schema
+
+
   pipelines:
     sanad_medallion:
       name: sanad_medallion

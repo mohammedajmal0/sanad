@@ -133,3 +133,25 @@
 1. When would you trigger a pipeline on file arrival instead of on a schedule, and what can go wrong with each?
 2. Three files of one export arrive 20 seconds apart. How do you make sure they're processed in one run?
 3. A file-arrival job has run nothing for two days. How do you tell "no data was sent" apart from "the trigger is broken"?
+
+### 2026-11-07: AI/BI dashboard on gold
+
+**What we built:** [sanad_gold.lvdash.json](../../dashboards/sanad_gold.lvdash.json), deployed by the bundle as `resources.dashboards.sanad_gold` in [databricks.yml](../../databricks.yml). One page: 3 KPIs (2 duplicate invoices, a 2.6% late rate over the year, 30 VPN tickets on the worst day), the late rate by month per region (Jeddah in orange), the late rate by carrier (Red Sea Cargo 4.8%, the others about 1.9%), VPN tickets per day, and the invoice issues table. A region filter covers the delivery and invoice datasets. Al-Faris is in **Abha**, so filtering on Abha keeps the duplicate pair. The `Late rate` measure was written by Claude at my request; I must be able to defend it.
+
+**Key concepts:**
+- SLA = Service Level Agreement, the promise to the customer (here: the promised delivery date). SLI = what you measure (the late rate). SLO = the internal target.
+- Dataset measure: `Late rate` is defined once in `ds_sla.columns` and used through `MEASURE()` by three widgets. Each widget recomputes it at its own grouping (all rows, month × region, carrier).
+- Sum, then divide: `SUM(late) / SUM(delivered)` is correct at any grouping. Averaging stored rates gives a small region the same weight as a big one.
+- Divide-by-zero: Databricks SQL runs in ANSI mode, so `x / 0` is an error, not NULL. November 2026 has shipments but no deliveries, and plain `/` would break the month chart. `try_divide` returns NULL, which means "no outcome yet".
+- A filter changes only the datasets that contain its field, and a multi-dataset filter needs one query per dataset. `ticket_trends` has no region, so the VPN widgets ignore the filter by design.
+- Bare table names (`FROM invoice_issues`) plus `dataset_catalog` and `dataset_schema` in the bundle keep the JSON free of environment names. The warehouse is found by name with a `lookup` variable, so no ID is in git.
+- `bundle validate` checks the YAML, not the SQL. Every dataset query was run with `aitools tools query` before deploying.
+
+**Mistakes:**
+- The first measure, `SUM(late) / SUM(delivered)`, was right in principle but failed on the partial month (`DIVIDE_BY_ZERO`). Probing for `SUM(delivered) = 0` before deploying caught it.
+- TODO(human): add your own.
+
+**Interview questions:**
+1. Why is the late rate a dashboard measure over counts and not an average of the stored `late_rate` column?
+2. A dashboard filter on region changes some widgets but not others. Why, and is that a bug?
+3. How do you deploy the same dashboard to dev and prod without hard-coding the catalog, schema or warehouse?

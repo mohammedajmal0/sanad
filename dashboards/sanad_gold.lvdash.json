@@ -1,0 +1,354 @@
+{
+  "datasets": [
+    {
+      "name": "ds_sla",
+      "displayName": "Delivery SLA",
+      "queryLines": [
+        "SELECT region, carrier, ship_month, shipments, delivered, late ",
+        "FROM delivery_sla_by_region ",
+        "ORDER BY ship_month"
+      ],
+      "columns": [
+        {
+          "displayName": "Late rate",
+          "description": "Late deliveries as a share of delivered shipments; in-transit shipments are excluded",
+          "expression": "try_divide(SUM(`late`), SUM(`delivered`))"
+        }
+      ]
+    },
+    {
+      "name": "ds_issues",
+      "displayName": "Invoice issues",
+      "queryLines": [
+        "SELECT invoice_id, order_id, account_name, region, invoice_date, amount_sar, invoices_for_order, issue_type ",
+        "FROM invoice_issues ",
+        "ORDER BY issue_type, invoice_id"
+      ]
+    },
+    {
+      "name": "ds_vpn",
+      "displayName": "VPN tickets per day",
+      "queryLines": [
+        "SELECT created_date, tickets ",
+        "FROM ticket_trends ",
+        "WHERE category = 'VPN' ",
+        "ORDER BY created_date"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "overview",
+      "displayName": "Overview",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1",
+      "layout": [
+        {
+          "widget": {
+            "name": "header",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Najm operations: gold layer\n",
+                "\n",
+                "Billing, delivery and IT signals the agents will act on. The region filter applies to invoices and deliveries; IT tickets have no region."
+              ]
+            }
+          },
+          "position": {"x": 0, "y": 0, "width": 9, "height": 2}
+        },
+        {
+          "widget": {
+            "name": "filter_region",
+            "queries": [
+              {
+                "name": "sla_region",
+                "query": {
+                  "datasetName": "ds_sla",
+                  "fields": [{"name": "region", "expression": "`region`"}],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "issues_region",
+                "query": {
+                  "datasetName": "ds_issues",
+                  "fields": [{"name": "region", "expression": "`region`"}],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {"fieldName": "region", "displayName": "Region (deliveries)", "queryName": "sla_region"},
+                  {"fieldName": "region", "displayName": "Region (invoices)", "queryName": "issues_region"}
+                ]
+              },
+              "frame": {"showTitle": true, "title": "Region"}
+            }
+          },
+          "position": {"x": 9, "y": 0, "width": 3, "height": 2}
+        },
+        {
+          "widget": {
+            "name": "kpi_duplicates",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_issues",
+                  "fields": [{"name": "count(invoice_id)", "expression": "COUNT(`invoice_id`)"}],
+                  "filters": [{"expression": "`issue_type` = 'duplicate'"}],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "count(invoice_id)", "displayName": "Duplicate invoices"}
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Duplicate invoices",
+                "showDescription": true,
+                "description": "Invoices on an order that was billed more than once"
+              }
+            }
+          },
+          "position": {"x": 0, "y": 2, "width": 4, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "kpi_late_rate",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_sla",
+                  "fields": [
+                    {"name": "measure(Late rate)", "expression": "MEASURE(`Late rate`)"},
+                    {"name": "ship_month", "expression": "`ship_month`"}
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(Late rate)",
+                  "displayName": "Late rate",
+                  "format": {"type": "number-percent", "decimalPlaces": {"type": "exact", "places": 1}}
+                },
+                "period": {"fieldName": "ship_month"}
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Late deliveries",
+                "showDescription": true,
+                "description": "Share of delivered shipments that arrived after the promised date"
+              }
+            }
+          },
+          "position": {"x": 4, "y": 2, "width": 4, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "kpi_vpn_peak",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_vpn",
+                  "fields": [
+                    {"name": "max(tickets)", "expression": "MAX(`tickets`)"},
+                    {"name": "created_date", "expression": "`created_date`"}
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "max(tickets)", "displayName": "VPN tickets"},
+                "period": {"fieldName": "created_date"}
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "VPN tickets on the worst day",
+                "showDescription": true,
+                "description": "A normal day has 2 or 3; a spike means an incident"
+              }
+            }
+          },
+          "position": {"x": 8, "y": 2, "width": 4, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "late_rate_by_region",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_sla",
+                  "fields": [
+                    {"name": "ship_month", "expression": "`ship_month`"},
+                    {"name": "measure(Late rate)", "expression": "MEASURE(`Late rate`)"},
+                    {"name": "region", "expression": "`region`"}
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {"fieldName": "ship_month", "scale": {"type": "temporal"}, "displayName": "Ship month"},
+                "y": {
+                  "fieldName": "measure(Late rate)",
+                  "scale": {"type": "quantitative"},
+                  "displayName": "Late rate",
+                  "format": {"type": "number-percent", "decimalPlaces": {"type": "max", "places": 1}}
+                },
+                "color": {
+                  "fieldName": "region",
+                  "scale": {"type": "categorical", "mappings": [{"value": "Jeddah", "color": "#D55E00"}]},
+                  "displayName": "Region"
+                }
+              },
+              "frame": {"showTitle": true, "title": "Late rate by month and region"}
+            }
+          },
+          "position": {"x": 0, "y": 5, "width": 6, "height": 5}
+        },
+        {
+          "widget": {
+            "name": "late_rate_by_carrier",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_sla",
+                  "fields": [
+                    {"name": "carrier", "expression": "`carrier`"},
+                    {"name": "measure(Late rate)", "expression": "MEASURE(`Late rate`)"}
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "measure(Late rate)",
+                  "scale": {"type": "quantitative"},
+                  "displayName": "Late rate",
+                  "format": {"type": "number-percent", "decimalPlaces": {"type": "max", "places": 1}}
+                },
+                "y": {"fieldName": "carrier", "scale": {"type": "categorical"}, "displayName": "Carrier"}
+              },
+              "frame": {"showTitle": true, "title": "Late rate by carrier"}
+            }
+          },
+          "position": {"x": 6, "y": 5, "width": 6, "height": 5}
+        },
+        {
+          "widget": {
+            "name": "vpn_per_day",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_vpn",
+                  "fields": [
+                    {"name": "created_date", "expression": "`created_date`"},
+                    {"name": "sum(tickets)", "expression": "SUM(`tickets`)"}
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {"fieldName": "created_date", "scale": {"type": "temporal"}, "displayName": "Day"},
+                "y": {"fieldName": "sum(tickets)", "scale": {"type": "quantitative"}, "displayName": "VPN tickets"}
+              },
+              "frame": {"showTitle": true, "title": "VPN tickets per day"}
+            }
+          },
+          "position": {"x": 0, "y": 10, "width": 12, "height": 5}
+        },
+        {
+          "widget": {
+            "name": "issues_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_issues",
+                  "fields": [
+                    {"name": "issue_type", "expression": "`issue_type`"},
+                    {"name": "invoice_id", "expression": "`invoice_id`"},
+                    {"name": "order_id", "expression": "`order_id`"},
+                    {"name": "account_name", "expression": "`account_name`"},
+                    {"name": "region", "expression": "`region`"},
+                    {"name": "invoice_date", "expression": "`invoice_date`"},
+                    {"name": "amount_sar", "expression": "`amount_sar`"},
+                    {"name": "invoices_for_order", "expression": "`invoices_for_order`"}
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {"fieldName": "issue_type", "displayName": "Issue"},
+                  {"fieldName": "invoice_id", "displayName": "Invoice"},
+                  {"fieldName": "order_id", "displayName": "Order"},
+                  {"fieldName": "account_name", "displayName": "Account"},
+                  {"fieldName": "region", "displayName": "Region"},
+                  {"fieldName": "invoice_date", "displayName": "Invoice date"},
+                  {
+                    "fieldName": "amount_sar",
+                    "displayName": "Amount",
+                    "format": {"type": "number-currency", "currencyCode": "SAR", "decimalPlaces": {"type": "exact", "places": 2}}
+                  },
+                  {"fieldName": "invoices_for_order", "displayName": "Invoices on this order"}
+                ]
+              },
+              "frame": {"showTitle": true, "title": "Invoices for finance to check"}
+            }
+          },
+          "position": {"x": 0, "y": 15, "width": 12, "height": 6}
+        }
+      ]
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "canvasBackgroundColor": {"light": "#FAFAF8", "dark": "#1B2126"},
+      "widgetBackgroundColor": {"light": "#FFFFFF", "dark": "#11171C"},
+      "widgetBorderColor": {"light": "#FFFFFF", "dark": "#11171C"},
+      "fontColor": {"light": "#1B2126", "dark": "#E8ECF0"},
+      "selectionColor": {"light": "#2272B4", "dark": "#8ACAFF"},
+      "visualizationColors": ["#0072B2", "#E69F00", "#009E73", "#CC79A7", "#56B4E9", "#7F7F7F"],
+      "widgetHeaderAlignment": "LEFT"
+    }
+  }
+}

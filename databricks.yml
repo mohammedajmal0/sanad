@@ -18,6 +18,27 @@ resources:
         - glob:
             include: pipelines/transformations/**
 
+  jobs:
+    # The "doorbell": when the source systems drop new files, run the pipeline.
+    # The generator stands in for those outside systems, so it is not part of the job.
+    sanad_ingest:
+      name: sanad_ingest
+      tags:
+        project: sanad
+      performance_target: STANDARD # no deadline: a few minutes of start-up is fine, and cheaper
+      trigger:
+        pause_status: UNPAUSED # development mode pauses triggers unless the job says otherwise
+        file_arrival:
+          url: /Volumes/sanad/bronze/landing/ # checks every subfolder, about once a minute
+          # Both are as fast as the API allows (minimum 60). 60s of quiet also covers an
+          # ERP export whose files land about 20s apart, so it becomes one run, not three.
+          wait_after_last_change_seconds: 60 # folder must be quiet this long before a run starts
+          min_time_between_triggers_seconds: 60 # cooldown between two runs
+      tasks:
+        - task_key: refresh_medallion
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.sanad_medallion.id}
+
 targets:
   dev:
     mode: development # names the pipeline "[dev <you>] ..." and keeps it separate from prod

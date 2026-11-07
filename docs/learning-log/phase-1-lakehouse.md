@@ -102,9 +102,34 @@
 
 **Mistakes:**
 - `event_log(TABLE(x))` returns the whole pipeline's log, not just table x's events. Without `origin.flow_name` in the filter, every table "wrote 2,000 rows" (that was `customer_360`). Fixed by filtering on the flow name.
-- TODO(human): add your own.
+- My answer to the check question ("a streaming table would give a duplicate invoice") named the outcome, not the mechanism. The point: a streaming table looks at each batch on its own, so two invoices that arrive in different batches are never compared, and the duplicate is missed.
+- I thought a materialized view might be rebuilt every time someone queries it. It's refreshed when the pipeline runs, and queries read the stored result, so it can be stale between runs.
 
 **Interview questions:**
 1. Why is duplicate-invoice detection a materialized view in gold and not an expectation in silver?
 2. A gold rate looks wrong after you roll monthly rows up to a quarter. What is the likely mistake, and how does the table's design prevent it?
 3. A new file landed and the pipeline ran. How do you prove from the event log that only that file was read, and whether the gold refresh was incremental?
+
+### 2026-11-07: The "doorbell" job (file-arrival trigger)
+
+**What we built:** the job `sanad_ingest` in [databricks.yml](../../databricks.yml): one `pipeline_task` that runs `sanad_medallion` when new files land anywhere under `/Volumes/sanad/bronze/landing/`. It replaces the planned "generator then pipeline" job, which would have ingested 0 rows per run ([ADR 0002](../adr/0002-trigger-pipeline-on-file-arrival.md)). Demo: a 3-ticket file was uploaded at 10:00:21, and the job started itself at 10:02:24 (`trigger: FILE_ARRIVAL`). Bronze and silver each wrote 3 rows, `gold.ticket_trends` gained three rows for 2026-11-01, and no second run followed (no loop).
+
+**Key concepts:**
+- Job versus trigger: the job is the to-do list (run the pipeline); the trigger decides when (schedule = alarm clock, file arrival = doorbell).
+- The doorbell decides *when* to run; Auto Loader's checkpoint decides *which files* to read.
+- A new trigger ignores files that were already there; only files that arrive after it's enabled count.
+- `wait_after_last_change_seconds` keeps a multi-file drop together in one run; `min_time_between_triggers_seconds` is a cooldown. Both have a 60-second minimum in the Jobs API.
+- Development mode pauses every schedule and trigger; a job's own `pause_status: UNPAUSED` overrides that.
+- `${resources.pipelines.sanad_medallion.id}` resolves to the right pipeline per target, so no IDs are hard-coded.
+- `performance_target: STANDARD`: the pipeline waited 4 min 12 s for compute, then ran for 1 min. Cheaper, but slower to start.
+- A trigger must never watch a folder its own job writes to, or it would start itself forever.
+
+**Mistakes:**
+- I wrote `set wait_after_last_change_seconds:20seconds`: a stray `set`, no space after the colon, a unit inside the value, and one extra space of indent on the next line. YAML needs `key: value`, a plain number, and matching indentation. Otherwise it reads the line as text, not a setting.
+- I picked 20 seconds for both timings, but both have a 60-second minimum in the Jobs API. `bundle validate` accepted 20; only `bundle deploy` rejected it ("must be greater than 60 seconds"). Validate checks the shape of the YAML, not the workspace's rules.
+- The first job-design question lost me. The mailbox picture (volume = mailbox, Auto Loader = a clerk with a list of letters already opened) explained why re-running a seed-42 generator ingests nothing.
+
+**Interview questions:**
+1. When would you trigger a pipeline on file arrival instead of on a schedule, and what can go wrong with each?
+2. Three files of one export arrive 20 seconds apart. How do you make sure they're processed in one run?
+3. A file-arrival job has run nothing for two days. How do you tell "no data was sent" apart from "the trigger is broken"?

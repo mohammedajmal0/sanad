@@ -70,7 +70,7 @@ One catalog, `sanad`, with five schemas.
 
 ### Generator to gold (Phase 1)
 
-One Lakeflow pipeline, `sanad_medallion` ([databricks.yml](../databricks.yml)), builds every layer. Each run only ingests files it hasn't seen, and gold always matches all of silver.
+One Lakeflow pipeline, `sanad_medallion` ([databricks.yml](../databricks.yml)), builds every layer. Each run only ingests files it hasn't seen, and gold always matches all of silver. Nobody starts it by hand: the job `sanad_ingest` has a file-arrival trigger on the landing volume and runs the pipeline once no new files have arrived for 60 seconds ([ADR 0002](adr/0002-trigger-pipeline-on-file-arrival.md)).
 
 ```mermaid
 flowchart LR

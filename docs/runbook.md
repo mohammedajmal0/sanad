@@ -8,7 +8,7 @@ How to tell Sanad is unhealthy, how to triage it, and how to roll back. Written 
 |---|---|---|
 | Sanad agent and chat UI | Agent Runtime on Databricks Apps | TODO(human) |
 | Mock systems MCP server | Databricks Apps | TODO(human) |
-| Lakeflow pipeline and generator job | Databricks Jobs | TODO(human) |
+| Lakeflow pipeline and file-arrival job `sanad_ingest` | Databricks Jobs | TODO(human) |
 | AI Search index | AI Search endpoint | TODO(human) |
 | Model endpoint | Unity AI Gateway | TODO(human) |
 

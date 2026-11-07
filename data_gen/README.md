@@ -12,7 +12,7 @@ Synthetic CRM, ERP, ITSM data and documents for Najm Supply Co., with seeded pro
 
 ## You write
 
-- TODO(human): the seeded problems (which accounts get duplicate invoices, which shipments run late, when the VPN incident cluster starts). They are the ground truth for evaluation.
+- Done: the seeded problems in `seed_problems()` in [generate.py](generate.py), checked by [test_data_gen.py](../tests/test_data_gen.py). They are the ground truth for evaluation.
 
 ## Done when
 

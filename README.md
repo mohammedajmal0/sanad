@@ -45,6 +45,6 @@ A governed multi-agent copilot for **Najm Supply Co.**, a fictional B2B distribu
 
 ## Working on this repo
 
-[CLAUDE.md](CLAUDE.md) sets the rules for Claude Code here. It works in the Learning output style and leaves `TODO(human)` for every judgement call. Each task follows the same loop: read first, plan, build, break it on purpose, explain back (`/explain-back`), record (`/adr`).
+[CLAUDE.md](CLAUDE.md) sets the rules for Claude Code here. It works in the Learning output style. Since Phase 3 it also writes the judgement calls (business rules, prompts, thresholds) and records each one in the learning log as Claude-written, so the owner knows what to be ready to defend. Each task follows the same loop: read first, plan, build, break it on purpose, explain back (`/explain-back`), record (`/adr`).
 
 Screenshots and a recorded 5-minute demo arrive in Phase 8.

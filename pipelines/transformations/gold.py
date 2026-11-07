@@ -16,11 +16,13 @@ def silver(table: str):
     return spark.read.table(f"silver.{table}")
 
 
-@dp.materialized_view(name="gold.invoice_issues",
-                      comment="One row per invoice finance should check, with the reason")
+@dp.materialized_view(
+    name="gold.invoice_issues", comment="One row per invoice finance should check, with the reason"
+)
 def invoice_issues():
     invoices = silver("invoices").withColumn(
-        "invoices_for_order", F.count("*").over(Window.partitionBy("order_id")))
+        "invoices_for_order", F.count("*").over(Window.partitionBy("order_id"))
+    )
 
     # Business rule: an order should be billed exactly once, so every invoice of an
     # order with 2+ invoices is a duplicate. Both are flagged: the pair is the evidence
@@ -38,13 +40,24 @@ def invoice_issues():
         invoices.withColumn("issue_type", issue_type)
         .where(F.col("issue_type").isNotNull())
         .join(accounts, "account_id", "left")  # left: keep an issue even if its account is unknown
-        .select("invoice_id", "order_id", "account_id", "account_name", "region",
-                "invoice_date", "amount_sar", "invoices_for_order", "issue_type")
+        .select(
+            "invoice_id",
+            "order_id",
+            "account_id",
+            "account_name",
+            "region",
+            "invoice_date",
+            "amount_sar",
+            "invoices_for_order",
+            "issue_type",
+        )
     )
 
 
-@dp.materialized_view(name="gold.delivery_sla_by_region",
-                      comment="Late-delivery rate per customer region, carrier and ship month")
+@dp.materialized_view(
+    name="gold.delivery_sla_by_region",
+    comment="Late-delivery rate per customer region, carrier and ship month",
+)
 def delivery_sla_by_region():
     # Business rule: late = delivered after the promised date. A shipment still in
     # transit is not counted yet (its outcome is unknown), so the rate is late / delivered.
@@ -54,43 +67,59 @@ def delivery_sla_by_region():
     return (
         silver("shipments")
         .join(region, "order_id")
-        .groupBy("region", "carrier", F.date_trunc("MONTH", "ship_date").cast("date")
-                 .alias("ship_month"))
-        .agg(F.count("*").alias("shipments"),
-             F.count("delivered_date").alias("delivered"),  # count(col) skips NULLs
-             F.count_if(is_late).alias("late"))
+        .groupBy(
+            "region", "carrier", F.date_trunc("MONTH", "ship_date").cast("date").alias("ship_month")
+        )
+        .agg(
+            F.count("*").alias("shipments"),
+            F.count("delivered_date").alias("delivered"),  # count(col) skips NULLs
+            F.count_if(is_late).alias("late"),
+        )
         .withColumn("late_rate", F.round(F.col("late") / F.col("delivered"), 4))
     )
 
 
-@dp.materialized_view(name="gold.ticket_trends",
-                      comment="Daily ticket counts per category; a spike means an incident")
+@dp.materialized_view(
+    name="gold.ticket_trends", comment="Daily ticket counts per category; a spike means an incident"
+)
 def ticket_trends():
     return (
         silver("tickets")
         .groupBy(F.to_date("created_at").alias("created_date"), "category")
-        .agg(F.count("*").alias("tickets"),
-             F.count_if(F.col("priority") == "high").alias("high_priority"),
-             F.count_if(F.col("status") == "open").alias("open_tickets"))
+        .agg(
+            F.count("*").alias("tickets"),
+            F.count_if(F.col("priority") == "high").alias("high_priority"),
+            F.count_if(F.col("status") == "open").alias("open_tickets"),
+        )
     )
 
 
-@dp.materialized_view(name="gold.customer_360",
-                      comment="One row per account: profile, order history, invoice issues",
-                      # Account managers see only their region (governance/setup.sql).
-                      # Only on this table: nothing in the pipeline reads customer_360, so the
-                      # filter can't leak into another gold table's numbers.
-                      row_filter="ROW FILTER sanad.ops.region_filter ON (region)")
+@dp.materialized_view(
+    name="gold.customer_360",
+    comment="One row per account: profile, order history, invoice issues",
+    # Account managers see only their region (governance/setup.sql).
+    # Only on this table: nothing in the pipeline reads customer_360, so the
+    # filter can't leak into another gold table's numbers.
+    row_filter="ROW FILTER sanad.ops.region_filter ON (region)",
+)
 def customer_360():
     # Aggregate each table per account BEFORE joining. Joining orders to contacts
     # first would repeat every order once per contact and inflate the totals (fan-out).
     contacts = silver("contacts").groupBy("account_id").agg(F.count("*").alias("contacts"))
-    orders = silver("orders").groupBy("account_id").agg(
-        F.count("*").alias("orders"),
-        F.sum("amount_sar").alias("order_total_sar"),
-        F.max("order_date").alias("last_order_date"))
-    issues = (spark.read.table("gold.invoice_issues")
-              .groupBy("account_id").agg(F.count("*").alias("invoice_issues")))
+    orders = (
+        silver("orders")
+        .groupBy("account_id")
+        .agg(
+            F.count("*").alias("orders"),
+            F.sum("amount_sar").alias("order_total_sar"),
+            F.max("order_date").alias("last_order_date"),
+        )
+    )
+    issues = (
+        spark.read.table("gold.invoice_issues")
+        .groupBy("account_id")
+        .agg(F.count("*").alias("invoice_issues"))
+    )
     return (
         silver("accounts")
         .select("account_id", "account_name", "region", "segment", "created_date")

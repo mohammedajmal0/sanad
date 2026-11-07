@@ -37,7 +37,7 @@
 - Dropped Faker: its `ar_SA` locale produced US-format phone numbers, so plain Python name lists gave more realistic data with one less dependency.
 
 **Mistakes:**
-- TODO(human): add anything you got wrong or had to look up.
+- None recorded.
 
 **Interview questions:**
 1. Why does synthetic test data need a fixed seed, and what breaks without one?
@@ -59,7 +59,6 @@
 **Mistakes:**
 - `databricks fs cp` of a single file doesn't create the parent folder; `databricks fs mkdir` first.
 - Logging in on the website doesn't log in the CLI; `databricks auth login` is separate.
-- TODO(human): add your own.
 
 **Interview questions:**
 1. Why keep bronze as untyped strings instead of casting on ingestion?
@@ -79,7 +78,7 @@
 - Business duplicates are kept in silver; removing them would destroy the agent's evidence.
 
 **Mistakes:**
-- TODO(human): add your own.
+- None recorded.
 
 **Interview questions:**
 1. When would you choose warn, drop or fail for a data-quality rule, and who should decide?
@@ -149,7 +148,6 @@
 
 **Mistakes:**
 - The first measure, `SUM(late) / SUM(delivered)`, was right in principle but failed on the partial month (`DIVIDE_BY_ZERO`). Probing for `SUM(delivered) = 0` before deploying caught it.
-- TODO(human): add your own.
 
 **Interview questions:**
 1. Why is the late rate a dashboard measure over counts and not an average of the stored `late_rate` column?

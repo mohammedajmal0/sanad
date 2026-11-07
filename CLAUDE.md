@@ -7,8 +7,9 @@ I must be able to explain every line in an interview. Learning beats speed.
 ## How to work with me
 - Before code for a new concept: explain it in under 150 words, then ask me one check question.
 - Plan first; wait for my OK before multi-file changes.
-- Leave TODO(human) for: business rules, prompts, tool descriptions, eval scorers,
-  data-quality expectations, grants and masks.
+- Since 2026-11-07 Claude also writes the judgement calls (business rules, prompts, tool
+  descriptions, eval scorers, data-quality expectations, grants and masks) instead of leaving
+  TODO(human). Note each one in the learning log as Claude-written; I must still defend it.
 - After each task, append to docs/learning-log/<phase>.md: what we built,
   key concepts, mistakes, and 3 interview questions (questions only).
 - After each task, also update the tracker rows (db collections phases/, tasks/)

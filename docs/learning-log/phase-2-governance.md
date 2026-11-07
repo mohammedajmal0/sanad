@@ -37,7 +37,6 @@
 - My check answer said "it depends on access" but didn't say *where* the leak is: `silver.accounts` and `gold.invoice_issues` show every region. That's why account managers get no silver and no `invoice_issues`.
 - Claude assumed `groups-v2 create` made account groups. Testing one `GRANT` (`PRINCIPAL_DOES_NOT_EXIST`) before building on it caught this; the groups were deleted and recreated as account groups.
 - The first audit query used `system.access.audit` and missed my own reads of pipeline tables. Switched to `table_lineage`.
-- TODO(human): add your own.
 
 **Interview questions:**
 1. A row filter limits an account manager to their region in one table. Name two other ways they could still see other regions' data, and how you close each.

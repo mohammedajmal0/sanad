@@ -1,6 +1,6 @@
 # 0001: Isolate Beta features behind a thin serving layer
 
-- **Status:** Proposed
+- **Status:** Accepted (2026-11-07)
 - **Date:** 2026-10-29
 - **Phase:** 0
 
@@ -18,7 +18,7 @@ Two pieces Sanad depends on are in Beta: the Agent Bricks CLI (scaffolding, `age
 
 Option 2. Keep agent logic in plain LangGraph modules under `agent/`. Keep the Databricks-specific serving layer thin and in one place. If the Agent Bricks CLI changes, only that layer changes.
 
-TODO(human): restate this reason in your own words, then change Status to Accepted.
+Restated by Claude at my request (2026-11-07): Beta tools change without warning. If the agent's logic is written in the Beta tool's own format, every change to that tool breaks the whole agent. If the logic is ordinary Python and only a small wrapper talks to the Beta tool, a change means fixing that one wrapper, and the logic can still be tested on a laptop without Databricks.
 
 ## Consequences
 

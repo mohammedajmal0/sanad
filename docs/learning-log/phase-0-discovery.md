@@ -31,13 +31,31 @@
 **Key concepts:**
 - Docs as code: decisions, runbooks and the agent card live next to the code and change in the same pull request.
 - ADR: a short record of context, options, decision and consequences, written when you choose between options.
-- TODO(human): marks every judgement call (scores, prompts, rules, thresholds) so Claude Code drafts plumbing and you own decisions.
+- `TODO(human)` marked every judgement call (scores, prompts, rules, thresholds) so Claude Code drafted plumbing and I owned decisions. Since 2026-11-07 Claude writes them too and the log records which ones.
 - Skill coverage matrix: each JD line maps to a file in the repo; an empty Evidence cell is the next task.
 
 **Mistakes:**
-- TODO(human): add anything you got wrong or had to look up while reviewing these files.
+- None recorded.
 
 **Interview questions:**
 1. Why keep architecture docs and decision records in the repo rather than a wiki?
 2. What belongs in an agent card, and who reads it?
 3. Why isolate Beta platform features behind a thin layer, and what does that cost you?
+
+### 2026-11-07: Canvas scoring, roadmap and pitch
+
+**What we built:** the filled [use-case canvas](../00-discovery/use-case-canvas.md) (risks, value metrics and agent/workflow/retrieval for the three scenario cases, three more candidates, scores, picks, rejection reasons), the [roadmap](../00-discovery/roadmap.md) with the two-minute pitch, and [ADR 0001](../adr/0001-isolate-beta-features.md) accepted. All of it was drafted by Claude at my request after Phases 1 and 2 were built, so the pitch uses real numbers from the data (Al-Faris 1,440.71 SAR twice; Jeddah 16% late). I must be able to defend every score and deliver the pitch without notes. The job description is still empty: it has to be pasted from the real posting.
+
+**Key concepts:**
+- Not everything is an agent. Delivery analytics is NL-to-SQL retrieval (a Genie agent), invoice capture is a workflow, and forecasting is a model. Only billing and service-desk triage need tool choice plus actions.
+- Score risk as safety (5 = safest) so "higher is better" holds for every column; weight value double because it is the reason to build.
+- Roadmap order follows risk, not just score: read-only analytics first to earn trust, then write actions behind approval.
+- Label estimated baselines as estimates until timed runs replace them.
+
+**Mistakes:**
+- None recorded.
+
+**Interview questions:**
+1. Your top-scoring use case ships second. Why would you not just ship the highest score first?
+2. How do you decide whether a problem needs an agent, a workflow or plain retrieval?
+3. Your pitch quotes "20 minutes per billing question". How would you defend or measure that number?

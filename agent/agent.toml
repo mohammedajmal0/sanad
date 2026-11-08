@@ -7,3 +7,15 @@ deployment_name = "sanad-cs"
 
 [tracing]
 experiment_name = "/Shared/agentbricks_traces/sanad-cs-bevrqu"
+[[tools]]
+id = "get_customer_summary"
+auth = "user"
+source = {kind = "uc_function", function = "sanad.ai.get_customer_summary"}
+[[tools]]
+id = "get_invoices"
+auth = "user"
+source = {kind = "uc_function", function = "sanad.ai.get_invoices"}
+[[tools]]
+id = "get_shipment_status"
+auth = "user"
+source = {kind = "uc_function", function = "sanad.ai.get_shipment_status"}

@@ -48,3 +48,35 @@ The model choice and the README's run recipe were written by Claude at my reques
 1. Your UC function tools run as the app's service principal. How do you make sure an account manager only sees their own region's customers through the agent?
 2. Why keep the agent graph separate from the server that hosts it, and what does that buy you when the platform is in Beta?
 3. A tool returns a timestamp without a timezone, and the model confidently calls it UTC. What does that teach you about designing tool outputs?
+
+### 2026-11-08: Three UC function tools, run as the person asking
+
+**What we built:** [tools/functions.sql](../../tools/functions.sql) with `get_customer_summary`, `get_invoices` and `get_shipment_status`.
+- **Access:** `EXECUTE` goes to `account_managers` only. The tools are bound in `agent/agent.toml` with `auth = "user"`.
+- **Decision:** [ADR 0004](../adr/0004-run-tools-as-the-asking-user.md) records running tools as the asking user. The proof is in [tools/README.md](../../tools/README.md).
+- **Result:** the local agent and the deployed agent both answer "Why was Al-Faris Trading invoiced twice in September?" with `INV-027711` and `INV-050001`.
+
+The functions, their descriptions (the `COMMENT`s), the region guard and the access-matrix row were written by Claude at my request; I must be able to defend them.
+
+**Key concepts:**
+- **A UC function tool is a stored query plus a description.** The model reads the `COMMENT` to pick the tool and fill its parameters. Agent Bricks serves the function through Databricks' managed MCP endpoint, where it appears as `sanad__ai__get_invoices`.
+- **Owner's rights, caller's filter** (tested as the service principal): a function reads its tables with its owner's rights, so callers need only `EXECUTE`. The row filter inside it still checks the caller, so a caller who may not see an account gets 0 rows.
+- **One filter guards every tool,** because each function keeps only accounts the caller can see in `customer_360`.
+- **`auth = "user"` versus `auth = "app"`:**
+  - With the user's forwarded token, Phase 2's rules apply unchanged.
+  - With the app's identity, the agent sees nothing, or everything, and you would need a second permission system.
+  - The model may choose *what* to look up (`account_id`), never *who* is asking.
+- **The deployed run proved whose identity was used.** The service principal would have seen 0 rows, so a full answer proves the tool ran as me.
+- **Tool output is evidence, and the model fills gaps.** Locally, the agent added "typical reasons" for the duplicate that no tool returned. The system prompt task must forbid claims without a source.
+- **Previews needed:** managed MCP servers (profile menu → Previews, not Settings), plus the app's `mcp.functions` user scope.
+
+**Mistakes:**
+- **Hidden error.** The first local run failed with "Could not discover configured MCP tools". Calling the MCP endpoint directly showed the real cause: "Databricks managed MCP servers are not enabled". I enabled the preview, and it worked about a minute later.
+- **Silent loop.** Claude's poll loop ended with `| tail -1 && break`. `tail` always succeeds, so the loop stopped after one try and reported nothing. Fixed by checking the probe's own exit code.
+- **Deploy into stopped compute.** The redeploy waited 5 minutes for app compute that had been stopped on purpose earlier. `databricks apps start`, then deploy, fixed it.
+- **Leftover warehouse permission.** The test's warehouse `CAN USE` for the service principal couldn't be removed. Replacing the warehouse's permission list requires an owner, and it has none. It's harmless and documented in the access matrix.
+
+**Interview questions:**
+1. Your agent's tools run as the user. What do you lose compared with running them as a service principal, and when would you choose the service principal anyway?
+2. A SQL function reads a table the caller has no `SELECT` on, yet returns rows. Why, and what does that mean for who should own the function?
+3. The model chooses the `account_id` it passes to a tool. Why is that safe here, and what parameter would you never let the model choose?

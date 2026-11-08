@@ -13,7 +13,7 @@ Every group also gets `USE CATALOG` on `sanad` and `USE SCHEMA` on `gold`: the t
 | `gold.delivery_sla_by_region` | `SELECT` | `SELECT` | none |
 | `gold.ticket_trends` | none | `SELECT` | `SELECT` |
 | `ai.chunks`, `ai.chunks_index` | none (searched through the agent only) | none (same) | none (same) |
-| `ai.*` functions (agent tools) | Phase 4 | Phase 4 | Phase 4 |
+| `ai.get_customer_summary`, `ai.get_invoices`, `ai.get_shipment_status` (agent tools) | `EXECUTE` (own region only, through `customer_360`) | none (their specialist comes later in Phase 4) | none |
 | `ops.*` | none | none | none |
 
 Why:
@@ -23,6 +23,7 @@ Why:
 - **Delivery SLA is shared with account managers.** It has no customer names, only rates per region and carrier, and a manager in Jeddah needs to compare their region with the others.
 - **IT support sees tickets only.** They have no business reason to see customers or invoices.
 - **Documents are searched through the agent only.** AI Search has no row security: anyone with `SELECT` on the index can read every chunk. So no group gets it. The agent's service principal does (Phase 4), and every query carries the reader's `audience` filter: all policies, plus KB articles for the reader's own department ([retrieval/search.py](../retrieval/search.py)). With no department given, the filter falls back to policies only. Which departments each group maps to is set in Phase 4, when the agent knows who is asking. Drafted by Claude at my request on 2026-11-08.
+- **Account managers read invoices and shipments only through the agent's tools.** The three functions read `silver` and `gold.invoice_issues` with their owner's rights, so `EXECUTE` is enough, and no table grant is added. Each function keeps only accounts the caller can see in `customer_360`, so the region filter still applies. The agent calls them as the person asking (`auth = "user"`, [ADR 0004](adr/0004-run-tools-as-the-asking-user.md)). Proof in [tools/README.md](../tools/README.md). Drafted by Claude at my request on 2026-11-08.
 - **`ops.*` holds the access rules themselves** (`user_regions`, the mask and filter functions). Nobody needs to query them: a row filter or mask runs with its owner's rights, so readers don't need `SELECT` on `user_regions` or `EXECUTE` on the functions.
 
 ## Row filters and column masks
@@ -49,5 +50,5 @@ The audit query in [governance/audit.sql](../governance/audit.sql) finds PII tab
 
 ## Not yet covered
 
-- The agent's service principal: a row for it is added in Phase 4, when it exists.
+- **The agent's service principal (`agent-bricks-sanad-cs`) has no grants in `sanad`.** Tools run as the signed-in user, and the service principal only calls the model. It was used once as a test identity on 2026-11-08, and its test grants were revoked; a leftover `CAN USE` on the warehouse gives it no data. The retrieval tool (later in Phase 4) decides whether it needs `SELECT` on the index.
 - Warehouse access (`CAN USE` on the SQL warehouse) is a workspace permission, not a UC grant. It is set in Phase 7 together with the app.

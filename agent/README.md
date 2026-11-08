@@ -10,7 +10,7 @@ The Sanad Customer Service agent: an Agent Bricks project (the CLI is Beta). `ag
 - **No memory or session store yet.** Both were unbound after `init`, and the memory task later in Phase 4 binds them. Conversation history lives in process memory.
 - **Tracing:** deployed runs trace to the MLflow experiment `/Shared/agentbricks_traces/sanad-cs-bevrqu`.
 - **Deployed** as the Databricks App `agent-bricks-sanad-cs`, with its own service principal. Keep it stopped between uses: `databricks apps start|stop agent-bricks-sanad-cs --profile sanad`.
-- **Sample tools:** `get_current_time` and `send_message` (approval-gated) come from the template. They are replaced by Sanad's tools in Phase 4.
+- **Tools:** three UC functions bound in `agent.toml` with `auth = "user"`: `get_customer_summary`, `get_invoices`, `get_shipment_status` ([tools/](../tools/), [ADR 0004](../docs/adr/0004-run-tools-as-the-asking-user.md)). They need the workspace's managed MCP servers preview, and the app's `mcp.functions` user scope, which `agentbricks deploy --allow-user-scope-update` adds. The template's `get_current_time` and approval-gated `send_message` stay until the approval task.
 
 ## Run
 

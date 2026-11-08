@@ -14,9 +14,12 @@ dev = [
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+testpaths = ["tests"]  # agent/ has its own env and tests: cd agent && uv run pytest
 
 [tool.ruff]
 line-length = 100
+# Agent Bricks server wiring, owned by agent/AGENTKIT_CONTRACT.md: keep it identical to the template.
+extend-exclude = ["agent/runtime"]
 
 [tool.ruff.lint.per-file-ignores]
 # Databricks injects the `spark` session into pipeline files at run time.

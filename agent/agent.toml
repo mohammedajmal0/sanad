@@ -1,0 +1,9 @@
+schema_version = 1
+
+[agent]
+framework = "langgraph"
+server = "agentbricks"
+deployment_name = "sanad-cs"
+
+[tracing]
+experiment_name = "/Shared/agentbricks_traces/sanad-cs-bevrqu"

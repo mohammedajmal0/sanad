@@ -23,8 +23,8 @@ Sanad answers billing, delivery, analytics and IT-support questions for Najm Sup
 
 ## Models
 
-- Primary: a Databricks-hosted Claude endpoint (for example `databricks-claude-sonnet-4-5`). Check the Serving page first, because Free Edition hides some models.
-- Fallback: a second model behind the same Unity AI Gateway endpoint.
+- **Primary: `system.ai.gpt-oss-120b`**, through the AI Gateway. Free Edition offers no Claude model. On 2026-11-08, `agentbricks experimental models list` showed gemma-3-12b, gpt-oss-120b and -20b, llama-4-maverick, llama-3.1-8b, llama-3.3-70b, qwen3-next-80b and qwen35-122b. gpt-oss-120b called tools correctly in the first smoke test, locally and deployed. Chosen by Claude at my request.
+- **Fallback:** a second model through the same gateway, for example `system.ai.meta-llama-3-3-70b-instruct` (Phase 7).
 
 ## Answer shape
 

@@ -17,6 +17,7 @@ Every group also gets `USE CATALOG` on `sanad` and `USE SCHEMA` on `gold`: the t
 | `ai.get_customer_summary`, `ai.get_invoices`, `ai.get_shipment_status` (agent tools) | `EXECUTE` (own region only, through `customer_360`) | none (their specialist comes later in Phase 4) | none |
 | `ai.search_policies` (agent tool) | `EXECUTE` | `EXECUTE` | `EXECUTE` |
 | `ops.*` | none | none | none |
+| `prompts.*` (MLflow Prompt Registry) | none | none | none |
 
 Why:
 
@@ -52,5 +53,5 @@ The audit query in [governance/audit.sql](../governance/audit.sql) finds PII tab
 
 ## Not yet covered
 
-- **The agent's service principal (`agent-bricks-sanad-cs`) has no grants in `sanad`.** Tools run as the signed-in user, and the service principal only calls the model. It was used once as a test identity on 2026-11-08, and its test grants were revoked; a leftover `CAN USE` on the warehouse gives it no data. Policy search also runs as the user, so the service principal needs no `SELECT` on the index either.
+- **The agent's service principal (`agent-bricks-sanad-cs`) has rights only in `sanad.prompts`.** `agentbricks deploy` gives it `USE CATALOG` on `sanad`, plus `USE SCHEMA`, `EXECUTE`, `CREATE FUNCTION` and `MANAGE` on `sanad.prompts`, so it can load the system prompt. That is why prompts get their own schema: `MANAGE` on `sanad.ai` would let the agent change grants on the index and the tools. All tools, including policy search, run as the signed-in user, so it has nothing in `sanad.ai`. It was used once as a test identity on 2026-11-08, and its test grants were revoked; a leftover `CAN USE` on the warehouse gives it no data.
 - Warehouse access (`CAN USE` on the SQL warehouse) is a workspace permission, not a UC grant. It is set in Phase 7 together with the app.

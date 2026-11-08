@@ -28,7 +28,13 @@ Sanad answers billing, delivery, analytics and IT-support questions for Najm Sup
 
 ## Answer shape
 
-Every answer follows a Pydantic schema: `answer`, `citations`, `confidence`, `next_action`. It is defined in Phase 4.
+Every answer follows the Pydantic schema in [agent/agent/schema.py](../agent/agent/schema.py):
+- `answer`: plain text.
+- `citations`: each a `document` (doc_id) or a `record` (invoice, order, shipment or account id).
+- `confidence`: `high`, `medium` or `low`. An answer without citations must be `low`.
+- `next_action`: `none`, `draft_credit_note`, `open_case` or `ask_user`.
+
+The chat shows `answer`, and the whole object is in the final message's `additional_kwargs["answer"]`. The system prompt is `sanad.prompts.customer_service@production` in the MLflow Prompt Registry. Its source is [agent/agent/prompts/customer_service.md](../agent/agent/prompts/customer_service.md).
 
 ## Known limitations
 

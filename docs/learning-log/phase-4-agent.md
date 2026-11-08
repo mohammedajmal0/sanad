@@ -105,3 +105,32 @@ I chose to give the three business groups `SELECT` on the index. The function, i
 1. You wrapped a vector search in a SQL function and granted only `EXECUTE`, yet users got permission errors. Why, and how is that different from a table read inside the same function?
 2. When is a metadata filter on a retrieval index good enough, and when do you need separate indexes?
 3. The model had the right rows but quoted the wrong invoice id. What would you change in the tool, the prompt and the eval?
+
+### 2026-11-08: Answer schema and the system prompt in the Prompt Registry
+
+**What we built:**
+- **Schema:** [agent/agent/schema.py](../../agent/agent/schema.py), the `Answer` (`answer`, `citations`, `confidence`, `next_action`). An answer without citations must say `low`.
+- **Final step:** [agent/agent/answer.py](../../agent/agent/answer.py), middleware that turns each finished turn into an `Answer` with one extra call that has no tools.
+- **Prompt:** the system prompt [customer_service.md](../../agent/agent/prompts/customer_service.md), registered as `sanad.prompts.customer_service@production` and bound in `agent.toml`.
+- **Tests:** [test_answer_schema.py](../../agent/tests/test_answer_schema.py) checks the citation rule, the closed `next_action` list, and that the prompt names every bound tool.
+- **Result:** the deployed agent returns the `Answer` with `INV-027711`, `INV-050001` and `fin-duplicate-invoices` cited, confidence `high`.
+
+The schema fields and rule, the prompt's rules and the formatting instructions were written by Claude at my request; I must be able to defend them.
+
+**Key concepts:**
+- **Structured output has two built-in routes in LangChain:**
+  - `ToolStrategy`: the model calls an "Answer" tool, forced with `tool_choice`.
+  - `ProviderStrategy`: the model API constrains the reply to a JSON schema.
+  - Both depend on the endpoint. gpt-oss behind the AI Gateway ignored the forced tool call and rejected `response_format` together with tools.
+- **The fix is an extra step, not a hope.** The agent loop runs with tools, then one call with no tools applies the JSON schema. It costs one more model call per turn but always gives the shape. A validation error gets one retry, then the turn fails.
+- **A schema rule can enforce a policy.** "No citations means `low` confidence" stops a sourceless answer from claiming certainty, the failure seen in p4-tools.
+- **Prompts are versioned in Unity Catalog.** `@production` is an alias: you register a new version and move the alias, and the agent loads the alias every turn, so no redeploy is needed. A silent fallback to a local copy would hide which prompt ran, so loading fails loudly instead.
+- **Least privilege for the app.** Binding a prompt makes deploy grant the app `MANAGE` on the prompt's whole schema, so prompts get their own schema (`sanad.prompts`). Checked afterwards: the app has nothing in `sanad.ai`.
+
+**Mistakes:**
+- **Two approaches that failed.** Claude tried `ToolStrategy`, then `ProviderStrategy`, before the extra-step design. Each was a 2-minute local test, and the reason each failed is recorded in `answer.py`, so it isn't tried again.
+
+**Interview questions:**
+1. Your model ignores `tool_choice` and rejects a JSON schema when tools are present. How do you still guarantee a structured answer, and what does it cost?
+2. Why keep the system prompt in a registry with an alias instead of in the code?
+3. What business rule would you put into the answer schema itself rather than the prompt, and why?

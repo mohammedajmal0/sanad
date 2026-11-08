@@ -7,6 +7,8 @@ The Sanad Customer Service agent: an Agent Bricks project (the CLI is Beta). `ag
 ## Sanad setup (Free Edition, checked 2026-11-08)
 
 - **Model:** `system.ai.gpt-oss-120b` (`MODEL` in [agent/agent.py](agent/agent.py)), through the AI Gateway. Free Edition offers no Claude model. List what it does offer with `agentbricks -p sanad experimental models list`.
+- **System prompt:** `sanad.prompts.customer_service@production` in the MLflow Prompt Registry, bound in `agent.toml`. Edit [agent/prompts/customer_service.md](agent/prompts/customer_service.md), then run `DATABRICKS_CONFIG_PROFILE=sanad uv run python -m agent.prompt` to register a new version and move `@production`. It lives in its own schema (`CREATE SCHEMA sanad.prompts`), because deploy grants the app `MANAGE` there.
+- **Answer:** every turn ends with one extra model call, with no tools, that returns the `Answer` schema ([agent/answer.py](agent/answer.py), [agent/schema.py](agent/schema.py)). LangChain's `response_format` doesn't work with gpt-oss behind the gateway: it ignores the forced tool call, and it rejects `response_format` together with tools.
 - **No memory or session store yet.** Both were unbound after `init`, and the memory task later in Phase 4 binds them. Conversation history lives in process memory.
 - **Tracing:** deployed runs trace to the MLflow experiment `/Shared/agentbricks_traces/sanad-cs-bevrqu`.
 - **Deployed** as the Databricks App `agent-bricks-sanad-cs`, with its own service principal. Keep it stopped between uses: `databricks apps start|stop agent-bricks-sanad-cs --profile sanad`.

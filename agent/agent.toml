@@ -23,3 +23,6 @@ source = {kind = "uc_function", function = "sanad.ai.get_shipment_status"}
 id = "search_policies"
 auth = "user"
 source = {kind = "uc_function", function = "sanad.ai.search_policies"}
+
+[experimental.prompts]
+customer_service = "sanad.prompts.customer_service"

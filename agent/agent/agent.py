@@ -28,7 +28,9 @@ from langchain.agents.middleware.human_in_the_loop import HITLResponse
 from langgraph.types import Command
 from pydantic import TypeAdapter, ValidationError
 
+from agent.answer import StructuredAnswer
 from agent.mcps import build_mcp_servers
+from agent.prompt import load_system_prompt
 
 # Importing the tools package auto-registers every tool module.
 from agent.tools import all_tools
@@ -131,14 +133,17 @@ async def create_agent_graph(
         [HumanInTheLoopMiddleware(interrupt_on=REQUIRE_APPROVAL)] if REQUIRE_APPROVAL else []
     )
     endpoint = model or MODEL
+    # use_ai_gateway routes to the Unity Catalog AI Gateway (`<host>/ai-gateway/mlflow/v1`), so
+    # `endpoint` is a `system.ai.*` model name rather than a serving-endpoint name.
+    llm = _RoutedChatDatabricks(
+        endpoint=endpoint, workspace_client=_app_workspace_client(), use_ai_gateway=True
+    )
     return create_agent(
-        # use_ai_gateway routes to the Unity Catalog AI Gateway (`<host>/ai-gateway/mlflow/v1`), so
-        # `endpoint` is a `system.ai.*` model name rather than a serving-endpoint name.
-        model=_RoutedChatDatabricks(
-            endpoint=endpoint, workspace_client=_app_workspace_client(), use_ai_gateway=True
-        ),
+        model=llm,
         tools=tools,
-        middleware=middleware,
+        system_prompt=load_system_prompt(),  # MLflow Prompt Registry, @production
+        # Every turn ends with a schema-checked Answer (agent/answer.py explains why not response_format).
+        middleware=[*middleware, StructuredAnswer(llm)],
         checkpointer=checkpointer(),
     )
 

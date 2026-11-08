@@ -22,13 +22,15 @@ CSS = """body { font-family: sans-serif; font-size: 11pt; line-height: 1.45; mar
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
-    rows = list(csv.DictReader(open(CORPUS / "manifest.csv")))
+    rows = list(csv.DictReader((CORPUS / "manifest.csv").read_text().splitlines()))
     for row in rows:
         body = markdown.markdown((CORPUS / f"{row['doc_id']}.md").read_text())
         dept = {"it": "IT"}.get(row["department"], row["department"].replace("_", " ").title())
-        meta = (f"Najm Supply Co. · {dept} · "
-                f"{'Policy' if row['doc_type'] == 'policy' else 'Knowledge base'} · "
-                f"Effective {row['effective_date']} · {row['doc_id']}")
+        meta = (
+            f"Najm Supply Co. · {dept} · "
+            f"{'Policy' if row['doc_type'] == 'policy' else 'Knowledge base'} · "
+            f"Effective {row['effective_date']} · {row['doc_id']}"
+        )
         html = f"<html><style>{CSS}</style><body><p class='meta'>{meta}</p>{body}</body></html>"
         book = plutoprint.Book(plutoprint.PAGE_SIZE_A4)
         book.load_html(html)

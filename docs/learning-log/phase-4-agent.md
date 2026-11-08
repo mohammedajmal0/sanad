@@ -134,3 +134,28 @@ The schema fields and rule, the prompt's rules and the formatting instructions w
 1. Your model ignores `tool_choice` and rejects a JSON schema when tools are present. How do you still guarantee a structured answer, and what does it cost?
 2. Why keep the system prompt in a registry with an alias instead of in the code?
 3. What business rule would you put into the answer schema itself rather than the prompt, and why?
+
+### 2026-11-08: Gate A passed
+
+**What we built:** [evals/gate_a.py](../../evals/gate_a.py), which asks the agent "Why was Al-Faris Trading invoiced twice in September?" and checks three things: both duplicate invoices are cited, `fin-duplicate-invoices` is cited, and every tool call has a span in the MLflow trace. The pass/fail rule is in [tests/test_gate_a.py](../../tests/test_gate_a.py).
+
+**Gate A passed on 2026-11-08**, local agent tracing to the workspace experiment: trace `tr-2402bfae449c7aebb2e8332738ea25b6`, 24 spans, calls `get_customer_summary` → `get_invoices` → `search_policies`. Reading "the refund policy" as `fin-duplicate-invoices`, the procedure that says when a duplicate is cancelled, credited or refunded, was Claude's call at my request.
+
+**Key concepts:**
+- **A gate is a script, not a demo.** It runs the same question, checks fixed facts, and exits non-zero on failure. Its rule is unit-tested, so the gate itself can't silently rot.
+- **"The trace shows every tool call" is checked, not eyeballed.** Every tool call in the answer must appear as a span name in the trace.
+- **Traces are written in two parts:** the summary (`trace_info`: request, response, token usage) goes through the API, and the spans go to cloud storage. A trace can be listed before its spans exist, so the gate waits.
+- **The runtime namespaces session ids per user,** so a client can't find its own trace by session id. The gate matches on time and the question text instead.
+- **Read the token use per span.** Here the four tool-loop calls used about 28k input tokens, and the final formatting call reported **296k in and 19k out**, for a request of about 12k characters and a reply under 1k. A small structured call costs normal amounts (568 in, about 340 out), so something in the real turn inflates it. To investigate with the Phase 6 cost scorer.
+
+**Mistakes:**
+- **No spans on the deployed agent.** The deployed app's trace exporter can't reach `us-west-2.storage.cloud.databricks.com`, so deployed traces have no spans. Found from `agentbricks deployments logs`, not from the error the gate printed. Gate A uses the local agent; the deployed gap is in the agent README.
+- **Bugs found while building the gate:**
+  - The first lookup assumed the session id would appear in the trace.
+  - It also assumed `mlflow.search_traces` would list the traces; MLflow 3.18 returned nothing, so the gate reads them over REST.
+  - Two 502s were a cold start: the app reinstalls 183 packages after `start`. The gate now retries a 502 for up to a minute.
+
+**Interview questions:**
+1. How do you prove an agent used its tools rather than its memory, and what would you check automatically?
+2. Your deployed agent's traces have metadata but no spans. Where would you look, and what does it tell you about the platform?
+3. One model call in a turn reports 10 times the tokens of the rest. How do you find out why, and how would you catch it before it reaches the bill?

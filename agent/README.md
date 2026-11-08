@@ -49,7 +49,7 @@ Since 2026-11-07, Claude writes these at my request, and each one is logged in t
 
 ## Done when
 
-- **Gate A:** the agent finds the seeded duplicate invoice, cites the refund policy, and the trace shows every tool call.
+- **Gate A:** the agent finds the seeded duplicate invoice, cites the refund policy, and the trace shows every tool call. **Passed on 2026-11-08** with [evals/gate_a.py](../evals/gate_a.py) `--local`, which uses the local server above plus `--setenv=MLFLOW_TRACKING_URI=databricks --setenv=MLFLOW_EXPERIMENT_NAME=/Shared/agentbricks_traces/sanad-cs-bevrqu`. The deployed agent gives the same answer, but **its traces arrive without spans**: the app's MLflow exporter can't reach the cloud storage host (`Failed to send trace to MLflow backend … storage.cloud.databricks.com … Max retries exceeded` in `agentbricks deployments logs`).
 - **Phase 4 (tracker):** the supervisor routes a question to one of three specialists, calls a UC function tool, returns a schema-validated answer, and asks for approval before any write.
 
 ## Template notes (Agent Bricks 0.9.0, unchanged)

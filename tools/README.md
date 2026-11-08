@@ -45,4 +45,4 @@ The positive case wasn't run. It would add the service principal to `account_man
 
 ## Done when
 
-Gate A: the agent finds the seeded duplicate invoice, cites the refund policy, and the trace shows every tool call.
+Gate A: the agent finds the seeded duplicate invoice, cites the refund policy, and the trace shows every tool call. Passed on 2026-11-08 ([evals/gate_a.py](../evals/gate_a.py)).

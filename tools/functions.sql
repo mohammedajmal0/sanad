@@ -32,7 +32,7 @@ RETURNS TABLE (
   invoice_id STRING, order_id STRING, invoice_date DATE, amount_sar DECIMAL(12,2),
   issue_type STRING, invoices_for_order BIGINT
 )
-COMMENT 'List one customer''s invoices, newest first (up to 50): invoice_id, order_id, invoice_date, amount in SAR, and issue_type. issue_type is "duplicate" (another invoice bills the same order_id), "non_positive_amount", "future_dated", or "none". Use it for billing questions such as being invoiced twice. Needs an account_id from get_customer_summary.'
+COMMENT 'List one customer''s invoices (up to 50), flagged ones first, then newest first: invoice_id, order_id, invoice_date, amount in SAR, and issue_type. issue_type is "duplicate" (another invoice bills the same order_id), "non_positive_amount", "future_dated", or "none". Use it for billing questions such as being invoiced twice. Needs an account_id from get_customer_summary.'
 RETURN
   SELECT i.invoice_id, i.order_id, i.invoice_date, i.amount_sar,
          coalesce(x.issue_type, 'none'),
@@ -41,7 +41,8 @@ RETURN
   LEFT JOIN sanad.gold.invoice_issues x ON x.invoice_id = i.invoice_id
   WHERE i.account_id = get_invoices.account_id
     AND i.account_id IN (SELECT c.account_id FROM sanad.gold.customer_360 c)  -- the region guard
-  ORDER BY i.invoice_date DESC
+  -- flagged invoices first: the model once copied the wrong id out of a long list
+  ORDER BY x.issue_type IS NULL, i.invoice_date DESC
   LIMIT 50;
 
 -- 3. Order -> delivery status. Same late rule as gold.delivery_sla_by_region:
@@ -68,17 +69,59 @@ RETURN
     -- the region guard
     AND o.account_id IN (SELECT c.account_id FROM sanad.gold.customer_360 c);
 
--- 4. Grants: only the Customer Service agent's users. No table grants are added:
+-- 4. Question -> policy and KB passages, with the document to cite.
+--    AI Search has no row security, so the audience filter lives here, set from the
+--    caller's groups, never from the model: policies ('all') for everyone, KB articles
+--    for the caller's departments. No group means policies only.
+--    vector_search() has no filter argument (checked 2026-11-08), so it fetches the top 100
+--    of the whole index (all three strategies) and filters after; ADR 0003 picked 'whole'.
+CREATE OR REPLACE FUNCTION sanad.ai.search_policies(
+  question STRING COMMENT 'The question in plain words, e.g. "How soon must we tell a customer about a duplicate invoice?"'
+)
+RETURNS TABLE (
+  doc_id STRING, title STRING, doc_type STRING, department STRING, effective_date STRING,
+  text STRING
+)
+COMMENT 'Search Najm''s policies and knowledge-base articles. Returns up to 5 whole documents, best match first: doc_id and title (cite them in the answer), doc_type (policy or kb), department, effective_date, and the full text. Use it for any question about rules, deadlines, approvals, refunds, procedures or how-to steps. Only state rules that appear in the returned text.'
+RETURN
+  SELECT doc_id, title, doc_type, department, CAST(effective_date AS STRING), chunk_to_retrieve
+  FROM vector_search(index => 'sanad.ai.chunks_index', query_text => question,
+                     query_type => 'HYBRID', num_results => 100)
+  WHERE strategy = 'whole'
+    AND (audience = 'all'
+      OR (audience IN ('customer_service', 'finance', 'logistics')
+          AND is_account_group_member('account_managers'))
+      OR (audience = 'logistics' AND is_account_group_member('ops_managers'))
+      OR (audience = 'it' AND is_account_group_member('it_support')))
+  ORDER BY search_score DESC
+  LIMIT 5;
+
+-- 5. Grants: the data tools to the Customer Service agent's users only. No table grants are added:
 --    account managers still can't SELECT silver or gold.invoice_issues directly.
 GRANT USE SCHEMA ON SCHEMA sanad.ai TO `account_managers`;
 GRANT EXECUTE ON FUNCTION sanad.ai.get_customer_summary TO `account_managers`;
 GRANT EXECUTE ON FUNCTION sanad.ai.get_invoices         TO `account_managers`;
 GRANT EXECUTE ON FUNCTION sanad.ai.get_shipment_status  TO `account_managers`;
+-- Policy search: vector_search() calls AI Search with the CALLER's identity (tested 2026-11-08:
+-- 403 without SELECT on the index), unlike the table reads above, which use the owner's rights.
+-- So each group needs SELECT on the index (chosen by me on 2026-11-08). The audience filter
+-- then picks relevant documents; it is not a security boundary. Confidential documents
+-- would go in a separate index with its own grants.
+GRANT SELECT ON TABLE sanad.ai.chunks_index TO `account_managers`;
+GRANT SELECT ON TABLE sanad.ai.chunks_index TO `ops_managers`;
+GRANT SELECT ON TABLE sanad.ai.chunks_index TO `it_support`;
+GRANT USE SCHEMA ON SCHEMA sanad.ai TO `ops_managers`;
+GRANT USE SCHEMA ON SCHEMA sanad.ai TO `it_support`;
+GRANT EXECUTE ON FUNCTION sanad.ai.search_policies TO `account_managers`;
+GRANT EXECUTE ON FUNCTION sanad.ai.search_policies TO `ops_managers`;
+GRANT EXECUTE ON FUNCTION sanad.ai.search_policies TO `it_support`;
 
--- 5. Checks (as an admin or ops manager, who sees every region):
+-- 6. Checks (as an admin or ops manager, who sees every region):
 --    expect 1 row, ACC-00001 Al-Faris Trading, Abha, flagged_invoices = 2
 SELECT * FROM sanad.ai.get_customer_summary('al-faris');
 --    expect 2 rows: INV-027711 and INV-050001, both ORD-027711, 1440.71
 SELECT * FROM sanad.ai.get_invoices('ACC-00001') WHERE issue_type = 'duplicate';
 --    expect 1 row for ORD-027711 with a status and days_late
 SELECT * FROM sanad.ai.get_shipment_status('ORD-027711');
+--    expect fin-duplicate-invoices in the top 5 (rank 4 on 2026-11-08)
+SELECT doc_id, title FROM sanad.ai.search_policies('We billed a customer twice. How soon must we tell them?');

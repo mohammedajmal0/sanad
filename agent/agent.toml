@@ -19,3 +19,7 @@ source = {kind = "uc_function", function = "sanad.ai.get_invoices"}
 id = "get_shipment_status"
 auth = "user"
 source = {kind = "uc_function", function = "sanad.ai.get_shipment_status"}
+[[tools]]
+id = "search_policies"
+auth = "user"
+source = {kind = "uc_function", function = "sanad.ai.search_policies"}

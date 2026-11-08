@@ -80,3 +80,28 @@ The functions, their descriptions (the `COMMENT`s), the region guard and the acc
 1. Your agent's tools run as the user. What do you lose compared with running them as a service principal, and when would you choose the service principal anyway?
 2. A SQL function reads a table the caller has no `SELECT` on, yet returns rows. Why, and what does that mean for who should own the function?
 3. The model chooses the `account_id` it passes to a tool. Why is that safe here, and what parameter would you never let the model choose?
+
+### 2026-11-08: Policy search as a fourth UC function tool
+
+**What we built:** `sanad.ai.search_policies` in [tools/functions.sql](../../tools/functions.sql), bound like the other tools with `auth = "user"`.
+- **How it searches:** `vector_search()` runs the ADR 0003 query (`whole` cards, hybrid). The function then keeps each caller's audience, set by `is_account_group_member()`.
+- **Quality:** on the 40 eval questions through the function, all 29 that a non-IT user may see hit the top 5 (recall@5 1.00, MRR 0.90), and the 11 IT-only questions returned nothing.
+- **Result:** the deployed agent answers "Al-Faris says they were invoiced twice. Is that true, and what does our policy say?" with both invoice ids and the `fin-duplicate-invoices` steps, including telling the customer within 2 business days.
+
+I chose to give the three business groups `SELECT` on the index. The function, its description, the audience mapping and the flagged-first ordering of `get_invoices` were written by Claude at my request; I must be able to defend them.
+
+**Key concepts:**
+- **Not every call inside a function uses the owner's rights.** Table reads do. `vector_search()` makes a remote call to AI Search with the caller's identity, so callers need `SELECT` on the index. The service-principal test (`403`) showed it; the docs didn't say.
+- **A filter is not a security boundary.** Once users can query the index, the `audience` filter only decides relevance. Real separation means separate indexes with their own grants, the same rule Agent Bricks gives for memory partitions.
+- **Build the trusted part into the function.** The audience comes from `is_account_group_member()` inside SQL, never from a tool parameter, so the model can't widen it.
+- **Searching without a filter argument:** `vector_search()` has none, so the function fetches the top 100 of all three strategies and filters to `whole`. The re-run of the eval checks this didn't cost quality.
+- **Order tool output so the evidence comes first.** The model copied the wrong invoice id out of a 24-row list. With flagged invoices first, it got both right.
+
+**Mistakes:**
+- **Wrong expectation.** Claude's check comment said the duplicate-invoice policy would rank first. It ranked 4th for that question, so the comment was corrected.
+- **Wrong invoice id.** The model reported `INV-019369` instead of `INV-050001` (local run). Fixed for now by ordering. The prompt and the Gate A eval must catch this kind of error for good.
+
+**Interview questions:**
+1. You wrapped a vector search in a SQL function and granted only `EXECUTE`, yet users got permission errors. Why, and how is that different from a table read inside the same function?
+2. When is a metadata filter on a retrieval index good enough, and when do you need separate indexes?
+3. The model had the right rows but quoted the wrong invoice id. What would you change in the tool, the prompt and the eval?

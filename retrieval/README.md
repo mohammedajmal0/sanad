@@ -33,7 +33,7 @@ The three strategies, measured on 2026-11-08:
 - **Endpoint `sanad-search`, STANDARD.** Free Edition allows one endpoint. STANDARD applies filters before it searches, so a filtered query still returns k results.
 - **Index `sanad.ai.chunks_index`.** Delta Sync, managed embeddings of `chunk_to_embed` with `databricks-gte-large-en`, triggered sync.
 - **[search.py](search.py).** Hybrid query (meaning plus exact words), filtered on `strategy` and `audience`. No reranker: Free Edition answers "Reranking is not yet enabled for this workspace".
-- **Known weakness.** Exact codes such as `INC-2026-1019` are found when asked alone (hybrid rank 3, meaning-only not in the top 5) but get lost inside a full sentence. The retrieval eval measures how often this happens.
+- **Exact codes.** In a smoke test, the bare code `INC-2026-1019` ranked 3rd with hybrid search and outside the top 5 with meaning-only search, and one full sentence around it lost it. In the eval below, all 10 code questions were found in the top 5 by every strategy, so the miss depended on wording.
 - **Permission-aware retrieval.** AI Search has no row or column security, so every query carries the reader's `audience` filter: `all` (every policy) plus the reader's departments (their KB articles). With no department given, the reader sees policies only. See the [access matrix](../docs/access-matrix.md).
 
 ## Evaluation
@@ -52,6 +52,8 @@ Results on 2026-11-08 (hybrid search, no reranker, all departments):
 
 words@5 is how many words the LLM would read from the top 5: the cost side. With 40 questions, one question is 2.5 points of recall, so `section` and `fixed` are a tie.
 
+**Decision:** the agent retrieves `whole` cards ([ADR 0003](../docs/adr/0003-retrieve-whole-documents-with-ai-prep-search.md)), and `search()` defaults to it. `section` and `fixed` stay in the table and the index so this eval can be re-run when the corpus changes.
+
 ## Done when
 
-One chunking strategy beats the others on recall@5, recorded with numbers in ADR 0003.
+One chunking strategy beats the others on recall@5, recorded with numbers in ADR 0003. Done on 2026-11-08: `whole`.

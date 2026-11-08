@@ -109,3 +109,23 @@
 1. Two strategies differ by 0.01 MRR on 40 questions. Would you pick the higher one, and what would you need to be confident?
 2. How do you build retrieval ground truth that stays valid when you change the chunking?
 3. One document's sections fill 4 of your top 5 results. Why is that a problem, and how would you fix it?
+
+### 2026-11-08: ADR 0003, retrieve whole documents with `ai_prep_search`
+
+**What we built:** [ADR 0003](../adr/0003-retrieve-whole-documents-with-ai-prep-search.md). The agent will retrieve `whole` cards (recall@5 1.00, MRR 0.93, 702 words) over `section` (0.93, 0.82, 203) and `fixed` (0.93, 0.81, 267). `search()` now defaults to `whole`. I chose the option; the ADR text, the significance check and the restated reason were written by Claude at my request, and I must be able to defend them.
+
+**Key concepts:**
+- Read the ranks, not only the headline. recall@5 differs on just 3 questions (sign test p = 0.25, could be chance), but `whole` ranked the right card higher than `section` on 9 of the 10 questions where they differ (p = 0.02).
+- A sign test: count only the questions where two strategies differ, and ask how likely that split is if both were equally good (a fair coin).
+- Re-run before you cite: a second run gave identical numbers, so the eval is reproducible (triggered index, nothing changed in between).
+- The right chunk size depends on the documents. One-page documents don't need cutting, and cutting them caused crowding. Long documents would.
+- Beta behind a thin layer (ADR 0001): `ai_prep_search` lives in one CTE. Everything downstream reads table columns, and `section` is the measured fallback.
+- Keep the losing strategies in the index: they cost nothing at 232 rows and let the eval run again when the corpus changes.
+
+**Mistakes:**
+- Claude's recommendation called `ai_prep_search` "managed by Databricks" without checking its release status. The docs say Beta. It was found after the choice, while writing the ADR, and handled under ADR 0001 instead of changing the decision.
+
+**Interview questions:**
+1. Your best strategy wins recall@5 by 3 questions out of 40. How do you decide whether that is real?
+2. You built on a Beta function. What is your exit plan if Databricks changes or removes it?
+3. Why might retrieving whole documents hurt answer quality even when recall goes up, and how would you measure it?

@@ -27,7 +27,7 @@ def build_filters(strategy: str, audiences: tuple[str, ...] = ()) -> dict:
 
 def search(
     question: str,
-    strategy: str = "section",
+    strategy: str = "whole",  # ADR 0003
     audiences: tuple[str, ...] = (),
     k: int = 5,
     w: WorkspaceClient | None = None,

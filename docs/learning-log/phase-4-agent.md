@@ -1,8 +1,10 @@
-# Phase 4: The first agent: Customer Service
+# Phase 4: Agents: LangGraph supervisor, UC tools, structured output, memory
 
-**Goal:** a LangGraph agent that answers billing and delivery questions from governed data and policy documents, with citations.
+**Goal:** build agents that use tools and apply business rules safely.
 
-**Done when (Gate A):** the agent finds the seeded duplicate invoice, cites the refund policy, and the trace shows every tool call.
+**Done when:** the supervisor routes a question to one of three specialists, calls a UC function tool, returns a schema-validated answer, and asks for approval before any write.
+
+**First milestone, Gate A:** the Customer Service agent finds the seeded duplicate invoice, cites the refund policy, and the trace shows every tool call.
 
 ## Read first
 

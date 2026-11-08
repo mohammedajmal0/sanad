@@ -2,12 +2,12 @@
 
 The Sanad Customer Service agent: an Agent Bricks project (the CLI is Beta). `agent.toml` declares bindings, `agent/agent.py` holds the LangGraph agent and `agent/tools/` its tools. It was scaffolded on 2026-11-08 with `agentbricks init --framework langgraph --name sanad-cs`. The template's own notes follow below.
 
-**Phases:** 4 (first agent, Gate A) and 5 (supervisor, three specialists, actions, memory)
+**Phase:** 4: first the Customer Service agent up to Gate A, then the supervisor, two more specialists, approvals and memory. Phase 5 connects them to the mock CRM, ERP, ITSM and Teams through MCP ([mock_systems/](../mock_systems/)).
 
 ## Sanad setup (Free Edition, checked 2026-11-08)
 
 - **Model:** `system.ai.gpt-oss-120b` (`MODEL` in [agent/agent.py](agent/agent.py)), through the AI Gateway. Free Edition offers no Claude model. List what it does offer with `agentbricks -p sanad experimental models list`.
-- **No memory or session store yet.** Both were unbound after `init`, and Phase 5 binds them. Conversation history lives in process memory.
+- **No memory or session store yet.** Both were unbound after `init`, and the memory task later in Phase 4 binds them. Conversation history lives in process memory.
 - **Tracing:** deployed runs trace to the MLflow experiment `/Shared/agentbricks_traces/sanad-cs-bevrqu`.
 - **Deployed** as the Databricks App `agent-bricks-sanad-cs`, with its own service principal. Keep it stopped between uses: `databricks apps start|stop agent-bricks-sanad-cs --profile sanad`.
 - **Sample tools:** `get_current_time` and `send_message` (approval-gated) come from the template. They are replaced by Sanad's tools in Phase 4.
@@ -31,24 +31,24 @@ The Sanad Customer Service agent: an Agent Bricks project (the CLI is Beta). `ag
 ## What goes here
 
 - **Phase 4:** the Customer Service agent; UC function tools (`get_customer_summary`, `get_invoices`, `get_shipment_status`); a retrieval tool that returns citations; a system prompt in the MLflow prompt registry; and a Pydantic answer schema (`answer`, `citations`, `confidence`, `next_action`).
-- **Phase 5:**
+- **Phase 4, after Gate A:**
   - a supervisor graph;
   - Ops Analytics (Genie agent) and Service Desk specialists;
   - an approval interrupt before every write;
-  - session and memory stores in `agent.toml`;
-  - retries with backoff.
+  - session and memory stores in `agent.toml`.
+- **Phase 5:** the mock systems behind a custom MCP server, with retries and a fallback on failure.
 - **Agent logic stays in plain LangGraph modules, and the serving layer stays thin** ([ADR 0001](../docs/adr/0001-isolate-beta-features.md)). The template already splits it this way: `agent/agent.py:run_agent` uses no Agent Bricks types, and `runtime/` is the thin layer.
 
 ## Judgement calls
 
 Since 2026-11-07, Claude writes these at my request, and each one is logged in the [learning log](../docs/learning-log/phase-4-agent.md):
 - Phase 4: the system prompt, the answer schema and every tool description.
-- Phase 5: the routing rules, the business rules (e.g. credit notes above SAR 5,000 need manager approval) and the approval message wording.
+- Later in Phase 4: the routing rules, the business rules (e.g. credit notes above SAR 5,000 need manager approval) and the approval message wording.
 
 ## Done when
 
 - **Gate A:** the agent finds the seeded duplicate invoice, cites the refund policy, and the trace shows every tool call.
-- **Phase 5:** a question needing two agents works, and every write pauses for approval.
+- **Phase 4 (tracker):** the supervisor routes a question to one of three specialists, calls a UC function tool, returns a schema-validated answer, and asks for approval before any write.
 
 ## Template notes (Agent Bricks 0.9.0, unchanged)
 

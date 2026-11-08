@@ -36,9 +36,21 @@ The three strategies, measured on 2026-11-08:
 - **Known weakness.** Exact codes such as `INC-2026-1019` are found when asked alone (hybrid rank 3, meaning-only not in the top 5) but get lost inside a full sentence. The retrieval eval measures how often this happens.
 - **Permission-aware retrieval.** AI Search has no row or column security, so every query carries the reader's `audience` filter: `all` (every policy) plus the reader's departments (their KB articles). With no department given, the reader sees policies only. See the [access matrix](../docs/access-matrix.md).
 
-## Still to come
+## Evaluation
 
-- 40 question-and-expected-passage pairs, the ground truth for retrieval evaluation, scored with recall@5 and MRR per strategy.
+[eval_questions.csv](eval_questions.csv) holds 40 questions written like an employee would ask them: 30 `meaning` questions and 10 `code` questions that hinge on an exact identifier (`INC-2026-1019`, `CL-2`). Every document is covered. Each row names the right document and a short verbatim **answer** phrase. A retrieved card is a hit when it comes from that document and holds the whole phrase, so the same rule works for every strategy. [tests/test_evaluate.py](../tests/test_evaluate.py) checks that every answer really is in its document.
+
+Run: `DATABRICKS_CONFIG_PROFILE=sanad uv run python -m retrieval.evaluate` (120 queries, about a minute).
+
+Results on 2026-11-08 (hybrid search, no reranker, all departments):
+
+| Strategy | recall@5 | MRR | words@5 | Misses |
+|---|---|---|---|---|
+| `whole` | 1.00 | 0.93 | 702 | none |
+| `section` | 0.93 | 0.82 | 203 | q03, q04, q14 |
+| `fixed` | 0.93 | 0.81 | 267 | q03, q07, q14 |
+
+words@5 is how many words the LLM would read from the top 5: the cost side. With 40 questions, one question is 2.5 points of recall, so `section` and `fixed` are a tie.
 
 ## Done when
 

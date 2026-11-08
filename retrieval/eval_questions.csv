@@ -1,0 +1,41 @@
+id,question,doc_id,answer,kind
+q01,"Who has to sign off on a SAR 7,000 credit note?",fin-credit-notes,"Above SAR 5,000: the finance manager",meaning
+q02,"Can I use reason code OTH on a credit note, and what does it need?",fin-credit-notes,"OTH for anything else, which needs a written explanation",code
+q03,"We billed a customer twice for the same order. How soon do we have to tell them?",fin-duplicate-invoices,"Tell the customer within 2 business days of detection",meaning
+q04,"When does a customer's account get blocked from shipping because they haven't paid?",fin-payment-terms,"An account with any invoice more than 60 days overdue goes on credit hold",meaning
+q05,"How many days do we promise for a delivery to Dammam?",log-delivery-sla,"Jeddah, Dammam and Medina: 4 business days after shipping",meaning
+q06,"Does a shipment that is still on the road count in the late rate?",log-delivery-sla,"A shipment that has not been delivered yet is not counted as late or on time",meaning
+q07,"What is the most a customer can get back for a late delivery?",log-delivery-sla,"capped at 10% of the order value",meaning
+q08,"What happens when a carrier is more than 5% late in a region for a month?",log-carrier-performance,"triggers a written performance review with the carrier within 10 business days",meaning
+q09,"Is a carrier penalised for delays caused by port congestion?",log-carrier-performance,"excluded from penalties for the period of the declared event",meaning
+q10,"A customer wants to send back unopened goods they no longer need. Do we charge them?",cs-returns,"A restocking fee of 10% applies",meaning
+q11,"What is an RMA number and what happens to a return without one?",cs-returns,"Returns without an RMA number are refused at the warehouse",code
+q12,"How quickly must we respond to a customer complaint?",cs-complaints,"acknowledged within 4 business hours and resolved within 3 business days",meaning
+q13,"Can I connect to the VPN from my own home computer?",it-vpn-policy,"Personal devices may not connect to the VPN",meaning
+q14,"Can I paste a list of customer phone numbers into ChatGPT to clean it up?",it-data-classification,"Restricted information must never be pasted into external AI tools",meaning
+q15,"How long do we keep a customer contact's personal data after the account is closed?",it-privacy-pdpl,"Keep customer contact data for 5 years after the account closes",meaning
+q16,"What should the service desk do with tickets for INC-2026-1019?",kb-vpn-drops-after-update,"Link every ticket with these symptoms to incident INC-2026-1019",code
+q17,"Is there a fix for VPN drops after the GlobalConnect 6.2.0 update?",kb-vpn-drops-after-update,"Install the GlobalConnect 6.2.1 hotfix from the Software Center",code
+q18,"I can't install the VPN hotfix. What settings can I change myself to stop the drops?",kb-vpn-drops-after-update,"Turn off Adaptive MTU and set the MTU to 1380",meaning
+q19,"How many wrong passwords can I type before my account locks?",kb-password-reset,"An account locks after 5 failed sign-in attempts",meaning
+q20,"What do I need to reset my password on reset.najm.local?",kb-password-reset,"confirm your identity with your registered authenticator app",code
+q21,"Which ERP role lets me cancel an invoice?",kb-erp-access,"plus cancel invoices and draft credit notes",meaning
+q22,"How do I re-add printer RUH-HQ-3F to my laptop?",kb-printer-queue,"Remove and re-add the printer from the IT portal printer list",code
+q23,"My laptop won't join NAJM-CORP since I changed my password, but my phone does. Why?",kb-wifi-after-password-change,"The laptop still holds your old password for the Wi-Fi network",code
+q24,"I can't send emails any more because my mailbox is full. How big can it get?",kb-mailbox-full,"Each mailbox holds 50 GB",meaning
+q25,"I lost my phone and can't approve MFA prompts. How do I sign in?",kb-mfa-new-phone,"the agent issues a temporary access pass",meaning
+q26,"I clicked a link in a suspicious email. What should I do now?",kb-phishing-report,"change your password from a different device",meaning
+q27,"Where in the ERP do I create a credit note?",kb-issue-credit-note,"open Accounts Receivable, then Credit Notes, then New",meaning
+q28,"What does the invoices_for_order column mean in the invoice issues report?",kb-invoice-issues-report,"shows how many invoices the order has",code
+q29,"What does the issue type non_positive_amount mean?",kb-invoice-issues-report,"the invoice amount is zero or negative",code
+q30,"A customer says the invoice amount is wrong. How do I stop reminders while we look into it?",kb-invoice-dispute,"A dispute flag stops payment reminders for 30 days",meaning
+q31,"What happens if nobody is there to receive a delivery?",kb-shipment-statuses,"The carrier tries again the next business day, up to 3 attempts",meaning
+q32,"A customer can't wait for a late order. Can we send it with someone else?",kb-late-delivery-customer,"logistics can re-ship urgent items with another carrier",meaning
+q33,"Which carrier should I book for an urgent order to Jeddah right now?",kb-jeddah-port-congestion,"Book urgent Jeddah orders with Najd Freight instead of Red Sea Cargo",meaning
+q34,"Where do I fill in claim form CL-2 and what do I attach?",kb-carrier-damage-claim,"Complete claim form CL-2 in the logistics portal and attach the evidence",code
+q35,"A delivery arrived broken. What's the deadline to claim from the carrier?",kb-carrier-damage-claim,"File the claim with the carrier within 7 days of delivery",meaning
+q36,"Why do I see three stars instead of a customer's email address?",kb-customer-lookup,"Other roles see them masked as three asterisks",meaning
+q37,"What do I say first when a customer calls about being billed twice?",kb-duplicate-billing-script,"Could you read me both invoice numbers so I can check them now",meaning
+q38,"The carrier already picked up the order and the customer wants a different address. What does that cost?",kb-address-change,"A redirect costs SAR 75 per shipment",meaning
+q39,"What makes a customer a key account?",kb-key-accounts,"more than SAR 2 million in orders over the last 12 months",meaning
+q40,"Can a customer still cancel an order after it has shipped?",kb-order-cancellation,"A shipped order cannot be cancelled",meaning

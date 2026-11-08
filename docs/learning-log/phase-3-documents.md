@@ -81,3 +81,31 @@
 1. AI Search has no row-level security. How do you stop an IT user from retrieving finance KB articles, and where must the filter be set so the user can't remove it?
 2. A user searches for an incident ID and gets unrelated results even with hybrid search. What's happening, and how would you fix it?
 3. When would you pick a standard endpoint over a storage-optimized one?
+
+### 2026-11-08: 40-question retrieval eval
+
+**What we built:** [eval_questions.csv](../../retrieval/eval_questions.csv) (40 questions: 30 `meaning`, 10 `code`, every document covered), [evaluate.py](../../retrieval/evaluate.py) (recall@5, MRR, words@5 and every question's rank per strategy) and [test_evaluate.py](../../tests/test_evaluate.py) (the metric maths, the matching rule, and the ground truth itself). The questions, the answer phrases and the matching rule were written by Claude at my request; I must be able to defend them.
+
+| Strategy | recall@5 | MRR | words@5 |
+|---|---|---|---|
+| `whole` | 1.00 | 0.93 | 702 |
+| `section` | 0.93 | 0.82 | 203 |
+| `fixed` | 0.93 | 0.81 | 267 |
+
+**Key concepts:**
+- recall@5: did the right card make the top 5 at all? MRR: the average of 1/rank (rank 1 = 1, rank 5 = 0.2, miss = 0), so how near the top. They can disagree: always rank 5 gives recall 1.0 but MRR 0.2.
+- Ground truth that survives a chunking change: the right document plus a short verbatim answer phrase. A hit is a card from that document holding the whole phrase. Card ids would differ per strategy; this rule doesn't.
+- Test the ground truth itself: a typo in an answer would look like a retrieval miss.
+- Ceiling check before the eval: every answer exists in some card of every strategy (the 10-word overlap fits most answers), so every miss is a search miss, not missing data.
+- `whole` wins on quality, but the LLM reads 3.5 times more words than with `section`. `section` and `fixed` tie: 0.01 of MRR is noise at 40 questions.
+- Crowding (q03): the call script's 4 section cards took 4 of the 5 slots and pushed the policy out. One card per document can't crowd. A cap of cards per document would fix it.
+- Vocabulary gap (q14): "ChatGPT" in the question, "external AI tools" in the policy. Only `whole` found it, at rank 5.
+- All 10 `code` questions were found in the top 5 by every strategy. The smoke-test miss on `INC-2026-1019` depended on the exact wording of the question.
+
+**Mistakes:**
+- My check answer picked strategy A for both metrics. A wins MRR (0.5 against 0.2), but B wins recall@5 (1.0 against 0.5): finding it late still counts as finding it.
+
+**Interview questions:**
+1. Two strategies differ by 0.01 MRR on 40 questions. Would you pick the higher one, and what would you need to be confident?
+2. How do you build retrieval ground truth that stays valid when you change the chunking?
+3. One document's sections fill 4 of your top 5 results. Why is that a problem, and how would you fix it?

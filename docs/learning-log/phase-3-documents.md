@@ -59,3 +59,25 @@
 1. Your managed chunker returns one chunk per document. Is that a bug, and when is not chunking the right choice?
 2. Why store the parser's output in a table instead of parsing inside the chunking query?
 3. How would you choose a chunk size for a new corpus, and how would you prove the choice was right?
+
+### 2026-11-08: AI Search endpoint and Delta Sync index
+
+**What we built:** the endpoint `sanad-search` (STANDARD) and the index `sanad.ai.chunks_index` as bundle resources in [databricks.yml](../../databricks.yml): Delta Sync, managed embeddings of `chunk_to_embed` with `databricks-gte-large-en`, triggered sync, 232 rows indexed. [search.py](../../retrieval/search.py) runs a hybrid query filtered on `strategy` and `audience`, tested in [test_search.py](../../tests/test_search.py). `chunks.sql` gained the `audience` column, and the [access matrix](../access-matrix.md) gained the `ai.chunks` row. The endpoint type, the embedding model, the audience rule (policies for all staff, KB articles for their own department) and the fail-closed default were drafted by Claude at my request; I must be able to defend them.
+
+**Key concepts:**
+- The endpoint is the always-on search server (Free Edition allows one). The index is a catalogue built from the Delta table. The table stays the source of truth: a broken index is deleted and synced again.
+- Managed embeddings: the index embeds the cards and, at query time, the question with the same model, so both are measured the same way.
+- Delta Sync follows the table through its change data feed. Triggered means we press sync after `chunks.sql` runs.
+- STANDARD filters before it searches. Storage-optimized filters after, so a filtered query can return fewer than k results, which would unfairly cut recall@5.
+- AI Search has no row security. Permission is an `audience` filter on every query, set by trusted code, never by the user. It fails closed: no departments means policies only. No business group gets `SELECT` on the index.
+- Hybrid = meaning search plus keyword (BM25) search, merged by rank (RRF). The bare code `INC-2026-1019` ranks 3rd with hybrid and outside the top 5 with meaning only. Inside a full sentence it is lost either way: the code is probably split at the hyphens, and "2026" is on many cards.
+- Two doors to one Databricks service: `vector-search-*` (GA, the old name) and `ai-search` (Public Preview). We use the GA one, as ADR 0001 says.
+- Bundle dev mode did not rename the endpoint or the index; `databricks bundle validate` showed the real names before deploying.
+
+**Mistakes:**
+- Claude planned a reranker from the docs, but Free Edition refuses it: "Reranking is not yet enabled for this workspace". Only a live query showed this. The reranker was removed, with a comment in `search.py` saying where it goes back.
+
+**Interview questions:**
+1. AI Search has no row-level security. How do you stop an IT user from retrieving finance KB articles, and where must the filter be set so the user can't remove it?
+2. A user searches for an incident ID and gets unrelated results even with hybrid search. What's happening, and how would you fix it?
+3. When would you pick a standard endpoint over a storage-optimized one?

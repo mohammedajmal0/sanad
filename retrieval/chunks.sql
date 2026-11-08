@@ -62,6 +62,11 @@ fixed AS (
   FROM words
   LATERAL VIEW posexplode(sequence(0, greatest(size(w) - 11, 0), 50)) win AS pos, first_word
 )
+-- audience: who may retrieve the chunk. AI Search has no row security, so the caller
+-- filters on it. Rule (drafted by Claude): policies are for all staff, a KB article
+-- only for its own department.
+SELECT *, CASE WHEN doc_type = 'policy' THEN 'all' ELSE department END AS audience
+FROM (
 SELECT
   concat('whole:', doc_id, ':', c:chunk_position::INT) AS chunk_id,
   'whole' AS strategy,
@@ -79,7 +84,8 @@ UNION ALL
 SELECT concat('fixed:', doc_id, ':', pos), 'fixed',
   doc_id, title, doc_type, department, effective_date, language,
   pos, text, concat(title, '\n', text)
-FROM fixed;
+FROM fixed
+);
 
 -- 3. Check, expect 0 rows: a document with no chunks in some strategy (for example,
 --    it failed to parse) can never be found by the agent under that strategy.

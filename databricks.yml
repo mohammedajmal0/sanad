@@ -54,6 +54,27 @@ resources:
           pipeline_task:
             pipeline_id: ${resources.pipelines.sanad_medallion.id}
 
+  # AI Search (formerly Vector Search): the policy and KB index the agents retrieve from.
+  # Free Edition allows one endpoint. STANDARD filters before it searches, so a filtered
+  # query still returns k results; storage-optimized filters after, and can return fewer.
+  vector_search_endpoints:
+    sanad_search:
+      name: sanad-search
+      endpoint_type: STANDARD
+
+  vector_search_indexes:
+    chunks_index:
+      name: sanad.ai.chunks_index
+      endpoint_name: ${resources.vector_search_endpoints.sanad_search.name}
+      primary_key: chunk_id
+      index_type: DELTA_SYNC
+      delta_sync_index_spec:
+        source_table: sanad.ai.chunks # needs its change data feed on (retrieval/chunks.sql)
+        pipeline_type: TRIGGERED # sync when told to, after chunks.sql runs; not 24/7
+        embedding_source_columns:
+          - name: chunk_to_embed # Databricks embeds this column for us (managed embeddings)
+            embedding_model_endpoint_name: databricks-gte-large-en # 8192-token window fits a whole doc
+
 targets:
   dev:
     mode: development # names the pipeline "[dev <you>] ..." and keeps it separate from prod

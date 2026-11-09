@@ -47,20 +47,15 @@ MODEL = (
 )  # Free Edition has no Claude (checked 2026-11-08)
 
 
-MANAGER_LIMIT_SAR = 5000  # for the approval text only: the mock ERP enforces the rule itself
-
-
 def _approval_request(tool_call: Any, state: Any, runtime: Any) -> str:
     """What the approver reads before a write runs (written by Claude at my request)."""
     a, name = tool_call["args"], tool_call["name"]
     if name == "create_credit_note":
-        text = f"Draft a credit note of SAR {a.get('amount_sar')} for {a.get('invoice_id')}? "
-        try:  # raw model arguments: don't let a bad amount break the approval request
-            big = float(a.get("amount_sar", 0)) > MANAGER_LIMIT_SAR
-        except (TypeError, ValueError):
-            big = False
-        manager = " Above SAR 5,000, so a manager must approve it next." if big else ""
-        return f"{text}Reason: {a.get('reason')}{manager}"
+        return (
+            f"Draft a credit note of SAR {a.get('amount_sar')} for {a.get('invoice_id')} "
+            f"({a.get('reason_code')}: {a.get('reason')})? The ERP then holds it for the approver "
+            "the Credit Note and Refund Policy requires."
+        )
     if name == "create_ticket":
         return (
             f"Open a {a.get('priority', 'medium')} {a.get('category')} ticket: {a.get('summary')}"

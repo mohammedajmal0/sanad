@@ -45,7 +45,7 @@ def test_refused_connections_mean_nothing_was_saved(api):
     down = httpx.ConnectError("refused")
     keys = api(down, down, down)
     with pytest.raises(mcp_server.Unavailable, match="ERP is unavailable.*nothing was saved"):
-        asyncio.run(mcp_server.create_credit_note("INV-050001", 1440.71, "duplicate"))
+        asyncio.run(mcp_server.create_credit_note("INV-050001", 1440.71, "DUP", "duplicate"))
     assert len(keys) == 3
 
 

@@ -13,14 +13,23 @@ def post(path, body, key=None):
     return api.post(path, json=body, headers={"Idempotency-Key": key or uuid.uuid4().hex})
 
 
-def test_erp_applies_the_manager_limit():
-    small = post("/erp/credit-notes", {"invoice_id": "INV-050001", "amount_sar": 1440.71,
-                                       "reason": "duplicate"})  # fmt: skip
-    big = post("/erp/credit-notes", {"invoice_id": "INV-050001", "amount_sar": 5000.01,
-                                     "reason": "duplicate"})  # fmt: skip
-    assert small.status_code == big.status_code == 201
-    assert (small.json()["status"], big.json()["status"]) == ("drafted", "waiting_for_manager")
-    assert api.get(f"/erp/credit-notes/{small.json()['id']}").json() == small.json()
+def test_every_credit_note_waits_for_the_approver_the_policy_names():
+    def draft(amount):
+        body = {"invoice_id": "INV-050001", "amount_sar": amount, "reason_code": "DUP",
+                "reason": "Duplicate of INV-027711"}  # fmt: skip
+        return post("/erp/credit-notes", body)
+
+    note = draft(1440.71)
+    assert note.status_code == 201 and note.json()["status"] == "awaiting_approval"
+    assert api.get(f"/erp/credit-notes/{note.json()['id']}").json() == note.json()
+    tiers = [draft(a).json()["approver"] for a in (1000, 1000.01, 5000, 5000.01, 50000.01)]
+    assert tiers == [
+        "account manager's team lead",
+        "regional sales manager",
+        "regional sales manager",
+        "finance manager",
+        "finance manager and chief financial officer",
+    ]
 
 
 def test_a_retried_create_returns_the_first_record():
@@ -44,10 +53,13 @@ def test_a_reused_key_with_a_different_request_is_refused():
 def test_bad_requests_are_rejected():
     assert (
         post(
-            "/erp/credit-notes", {"invoice_id": "050001", "amount_sar": 10, "reason": "x"}
+            "/erp/credit-notes",
+            {"invoice_id": "050001", "amount_sar": 10, "reason_code": "DUP", "reason": "x"},
         ).status_code
         == 422
     )
+    bad_code = {"invoice_id": "INV-050001", "amount_sar": 10, "reason_code": "OOPS", "reason": "x"}
+    assert post("/erp/credit-notes", bad_code).status_code == 422
     assert post("/itsm/tickets", {"category": "Coffee", "summary": "x"}).status_code == 422
     no_key = api.post("/teams/messages", json={"channel": "ops", "text": "hi"})
     assert no_key.status_code == 422

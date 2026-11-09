@@ -16,7 +16,10 @@ A FastAPI mock of Najm's CRM, ERP, ITSM and a Teams channel. It runs locally in 
   | Teams | `POST /teams/messages` | `GET /teams/messages?channel=` |
 
 - **Every create needs an `Idempotency-Key` header.** Sending the same key again returns the first record, so a retry can't make a duplicate. Reusing a key with a different request returns 409.
-- **The ERP enforces Najm's SAR 5,000 rule itself.** Above that, a credit note is stored as `waiting_for_manager`. There is no "manager approved" flag a client could set.
+- **The ERP follows the Credit Note and Refund Policy (`fin-credit-notes`).**
+  - Every credit note is stored as `awaiting_approval`, with the approver the policy names for its amount: the team lead up to SAR 1,000, the regional sales manager up to 5,000, the finance manager above that, plus the CFO above 50,000.
+  - It needs a reason code: `DUP`, `LATE`, `RET`, `PRC` or `OTH`.
+  - An AI may draft but never approve, so there's no approval flag a client could set.
 - **Tests:** [tests/test_mock_api.py](../tests/test_mock_api.py).
 - **Run:**
   - with Docker: `docker compose -f mock_systems/compose.yaml up --build -d`, served on port 8100;

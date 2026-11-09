@@ -16,12 +16,25 @@ from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
 app = FastAPI(title="Najm mock systems")
-MANAGER_LIMIT_SAR = 5000  # Najm's rule, enforced by the ERP: above SAR 5,000 a manager approves
+
+
+def approver(amount_sar: float) -> str:
+    """Who must approve a credit note: the Credit Note and Refund Policy (fin-credit-notes)."""
+    if amount_sar > 50000:
+        return "finance manager and chief financial officer"
+    if amount_sar > 5000:
+        return "finance manager"
+    if amount_sar > 1000:
+        return "regional sales manager"
+    return "account manager's team lead"
 
 
 class CreditNoteIn(BaseModel):
     invoice_id: str = Field(pattern=r"^INV-\d{6}$")
     amount_sar: float = Field(gt=0)
+    # fin-credit-notes: DUP duplicate invoice, LATE late delivery, RET returned goods,
+    # PRC pricing error, OTH anything else (the reason then explains it)
+    reason_code: Literal["DUP", "LATE", "RET", "PRC", "OTH"]
     reason: str = Field(min_length=1)
 
 
@@ -81,9 +94,10 @@ def health() -> dict:
 
 @app.post("/erp/credit-notes", status_code=201)
 def create_credit_note(note: CreditNoteIn, key: IdempotencyKey) -> dict:
-    over = note.amount_sar > MANAGER_LIMIT_SAR
-    status = "waiting_for_manager" if over else "drafted"
-    return _create("credit-notes", key, note.model_dump(), status=status)
+    # Every credit note is a draft until a second person approves it; an AI may never approve one.
+    approve_by = approver(note.amount_sar)
+    return _create("credit-notes", key, note.model_dump(), status="awaiting_approval",
+                   approver=approve_by)  # fmt: skip
 
 
 @app.get("/erp/credit-notes/{credit_note_id}")

@@ -229,16 +229,10 @@ async def test_agent_responds_end_to_end():
     assert events
 
 
-def test_approval_text_mentions_a_manager_only_above_the_limit():
+def test_approval_text_shows_what_will_be_drafted():
     from agent.agent import _approval_request
 
-    def text(amount):
-        call = {
-            "name": "create_credit_note",
-            "args": {"invoice_id": "INV-050001", "amount_sar": amount},
-        }
-        return _approval_request(call, None, None)
-
-    assert "manager" not in text(1440.71)
-    assert "manager" in text(6000)
-    assert "manager" not in text("not a number")  # raw model arguments must not crash it
+    args = {"invoice_id": "INV-050001", "amount_sar": 1440.71, "reason_code": "DUP", "reason": "x"}
+    text = _approval_request({"name": "create_credit_note", "args": args}, None, None)
+    assert all(part in text for part in ("SAR 1440.71", "INV-050001", "DUP"))
+    assert "Run" in _approval_request({"name": "rename_customer", "args": {}}, None, None)

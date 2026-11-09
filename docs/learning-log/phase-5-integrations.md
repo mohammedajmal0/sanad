@@ -160,3 +160,24 @@ These were written by Claude at my request; I must be able to defend them: one a
 1. Your MCP server works locally but deadlocks when deployed in the same process as the API it calls. Why, and what are two ways to fix it?
 2. Why can DNS-rebinding protection be off for an app behind Databricks' proxy but must stay on for a local server?
 3. Your agent calls the mock systems as its service principal. What do you lose compared with calling them as the user, and how would you get that back?
+
+### 2026-11-09: Correction: the credit-note rule comes from the policy, not the agent card
+
+Found while writing Phase 6's expected answers from the real policy text.
+
+**What was wrong:**
+- **Single limit versus tiers.** Phases 4 and 5 implemented "credit notes above SAR 5,000 need manager approval", taken from the agent card's one-line summary. The Credit Note and Refund Policy (`fin-credit-notes`) actually says:
+  - every credit note needs a second person to approve it;
+  - the approver depends on the amount: up to SAR 1,000 the account manager's team lead, up to 5,000 the regional sales manager, above that the finance manager, and above 50,000 also the CFO;
+  - an AI assistant may draft but never approve or post one;
+  - each credit note carries a reason code: `DUP`, `LATE`, `RET`, `PRC` or `OTH`.
+- **"DUP" was not invented.** The Phase 5 entry above called "policy code DUP" a fabrication. It's the policy's reason code for a duplicate invoice, so the model was right, and Claude's "fix" steered it away from the code.
+
+**What changed:**
+- **The mock ERP follows the policy.** Every credit note is `awaiting_approval`, with the tiered `approver`, and requires a valid `reason_code`. Tests cover the boundaries at 1,000, 5,000 and 50,000.
+- **The MCP tool takes `reason_code`,** and its description lists the policy's codes.
+- **The agent no longer keeps its own copy of the amount rule.** The approval text shows amount, invoice and reason code, and says the ERP routes it to the required approver.
+
+**Key concept:** take a business rule from its source document, not from a summary of it. And before calling a model's output invented, check the sources it could have read. Here the "invention" was in the policy all along.
+
+**Interview question:** your agent writes a detail you can't find in your notes. How do you decide whether it's a hallucination or a fact from a source you didn't check?

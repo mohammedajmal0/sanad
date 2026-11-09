@@ -75,12 +75,17 @@ async def _call(method: str, path: str, body: dict | None = None) -> dict | list
 
 
 @mcp.tool()
-async def create_credit_note(invoice_id: str, amount_sar: float, reason: str) -> dict:
-    """Draft a credit note in Najm's ERP for one invoice. The ERP drafts it, or stores it as
-    waiting_for_manager when it is above SAR 5,000. invoice_id like INV-050001, amount_sar in SAR.
-    reason: one sentence with the policy's doc_id exactly as a specialist cited it (e.g.
-    fin-duplicate-invoices); never make up a policy name or code."""
-    body = {"invoice_id": invoice_id, "amount_sar": amount_sar, "reason": reason}
+async def create_credit_note(
+    invoice_id: str, amount_sar: float, reason_code: str, reason: str
+) -> dict:
+    """Draft a credit note in Najm's ERP for one invoice. It is stored as awaiting_approval with
+    the approver the Credit Note and Refund Policy (fin-credit-notes) requires for the amount; an
+    AI may draft but never approve. invoice_id like INV-050001; amount_sar in SAR including VAT;
+    reason_code from fin-credit-notes: DUP duplicate invoice, LATE late delivery, RET returned
+    goods, PRC pricing error, OTH anything else; reason: one sentence, naming the original
+    invoice."""
+    body = {"invoice_id": invoice_id, "amount_sar": amount_sar, "reason_code": reason_code,
+            "reason": reason}  # fmt: skip
     return await _call("POST", "/erp/credit-notes", body)
 
 

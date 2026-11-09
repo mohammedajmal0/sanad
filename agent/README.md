@@ -23,7 +23,7 @@ The Sanad Customer Service agent: an Agent Bricks project (the CLI is Beta). `ag
 - **Tools:** four UC functions bound in `agent.toml` with `auth = "user"` belong to the Customer Service sub-agent: `get_customer_summary`, `get_invoices`, `get_shipment_status` and `search_policies` ([tools/](../tools/), [ADR 0004](../docs/adr/0004-run-tools-as-the-asking-user.md)). They need the workspace's managed MCP servers preview, and the app's `mcp.functions` user scope, which `agentbricks deploy --allow-user-scope-update` adds. - **Writes go to Najm's systems through MCP (Phase 5):**
   - `create_credit_note`, `create_ticket`, `create_case` and `post_teams_message` come from the MCP server in [mock_systems/](../mock_systems/), added in [agent/mcps.py](agent/mcps.py). Locally, `MOCK_MCP_URL` points at a plain MCP server. Deployed, `MOCK_MCP_APP` names the app `sanad-mock-systems` (set in `app.yaml`), which the agent calls with Databricks OAuth as its service principal ([ADR 0006](../docs/adr/0006-mock-systems-behind-a-custom-mcp-app.md)).
   - Every one of these tools except a read (`get_*`) pauses for approval, by default deny (`approval_rules` in [agent/agent.py](agent/agent.py)).
-  - The mock ERP enforces the SAR 5,000 rule.
+  - The mock ERP applies the credit-note policy: approver tiers by amount and reason codes.
   - The Phase 4 stand-ins (`agent/tools/actions.py`) were removed, so the agent has no local tools.
 
 ## Run
@@ -60,7 +60,7 @@ The Sanad Customer Service agent: an Agent Bricks project (the CLI is Beta). `ag
 Since 2026-11-07, Claude writes these at my request, and each one is logged in the [learning log](../docs/learning-log/phase-4-agent.md):
 - Phase 4: the system prompt, the answer schema and every tool description.
 - Phase 4: the routing rules ([prompts/supervisor.md](agent/prompts/supervisor.md)) and the `customer_service` tool description.
-- Later in Phase 4: the business rules (e.g. credit notes above SAR 5,000 need manager approval) and the approval message wording.
+- Later in Phase 4: the business rules (the credit-note approver tiers, from `fin-credit-notes`) and the approval message wording.
 
 ## Done when
 

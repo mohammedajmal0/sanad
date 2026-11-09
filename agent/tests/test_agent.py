@@ -16,36 +16,24 @@ from databricks_agentkit.langgraph.session_store import (
     invocation_metadata,
     thread_config,
 )
-from langchain_core.tools import BaseTool
 from runtime.adapter import _serialize_events
 
 
-def test_tools_autoregister():
-    tools = all_tools()
-    assert tools, "expected the sample tool to auto-register"
-    assert all(isinstance(t, BaseTool) for t in tools)
-    assert {"draft_credit_note", "open_ticket"} <= {t.name for t in tools}
+def test_no_local_tools():
+    # Sanad's reads are UC functions and Genie, and its writes go through the MCP server.
+    assert all_tools() == []
 
 
-def test_every_local_tool_is_a_gated_write():
-    # Local tools are Sanad's writes; each must pause for approval (reads are UC functions).
-    from agent.agent import REQUIRE_APPROVAL
+def test_writes_need_approval_and_reads_do_not():
+    from agent.agent import approval_rules
 
-    assert set(REQUIRE_APPROVAL) == {t.name for t in all_tools()}
-
-
-def test_credit_notes_above_the_limit_wait_for_a_manager():
-    from agent.tools.actions import draft_credit_note
-
-    def status(invoice_id, amount):
-        args = {"invoice_id": invoice_id, "amount_sar": amount, "reason": "duplicate"}
-        return draft_credit_note.invoke(args)["status"]
-
-    assert status("INV-050001", 1440.71) == "drafted"
-    assert status("INV-050001", 5000) == "drafted"  # "above SAR 5,000" means more than 5,000
-    assert status("INV-050001", 5000.01) == "waiting_for_manager"
-    assert status("050001", 10) == "rejected"
-    assert status("INV-050001", -1) == "rejected"
+    names = ["create_credit_note", "get_credit_note", "post_teams_message", "delete_everything"]
+    # default deny: a write tool nobody listed yet is gated too
+    assert set(approval_rules(names)) == {
+        "create_credit_note",
+        "post_teams_message",
+        "delete_everything",
+    }
 
 
 class _FakeInterrupt:
@@ -60,7 +48,7 @@ async def _aiter(events):
 
 @pytest.mark.asyncio
 async def test_serialize_events_relays_interrupt_as_native_event():
-    hitl = {"action_requests": [{"name": "draft_credit_note", "args": {"invoice_id": "x"}}]}
+    hitl = {"action_requests": [{"name": "create_credit_note", "args": {"invoice_id": "x"}}]}
     stream = _aiter([("updates", {"__interrupt__": (_FakeInterrupt(hitl, "int-1"),)})])
     events = [e async for e in _serialize_events(stream)]
     assert events == [{"type": "interrupt", "id": "int-1", "value": hitl}]
@@ -246,7 +234,7 @@ def test_approval_text_mentions_a_manager_only_above_the_limit():
 
     def text(amount):
         call = {
-            "name": "draft_credit_note",
+            "name": "create_credit_note",
             "args": {"invoice_id": "INV-050001", "amount_sar": amount},
         }
         return _approval_request(call, None, None)

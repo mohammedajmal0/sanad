@@ -1,27 +1,20 @@
-"""MCP servers to offer the agent — this is where you configure them.
+"""MCP servers the agent adds itself, beyond the ones declared in ``agent.toml``.
 
-Empty by default: the agent runs with only the MCP servers declared in ``agent.toml``. Add servers
-to ``build_mcp_servers`` to offer more; ``agent.py`` passes them to ``mcp_tools``, which joins them
-with the ``agent.toml`` servers and fetches their tools each request.
+Najm's mock enterprise systems (mock_systems/mcp_server.py, Phase 5), when ``MOCK_MCP_URL`` is set.
+They are optional: if the server is down when a turn starts, ``mcp_tools`` logs a warning and the
+agent runs without them, and ``handle_tool_error=True`` turns a failed call into a tool message
+the supervisor can explain instead of an exception that ends the turn.
 """
 
-from databricks_langchain import DatabricksMCPServer
+import os
+
+from databricks_langchain.multi_server_mcp_client import MCPServer
 
 
-def build_mcp_servers() -> list[DatabricksMCPServer]:
-    """Return the MCP servers to offer the agent. Empty by default — add your own.
-
-    Example (a Databricks-managed MCP, authed as the app service principal)::
-
-        from databricks.sdk import WorkspaceClient
-
-        host = WorkspaceClient().config.host
-        return [
-            DatabricksMCPServer(
-                name="system-ai",
-                url=f"{host}/api/2.0/mcp/functions/system/ai",
-                workspace_client=WorkspaceClient(),
-            ),
-        ]
-    """
-    return []
+def build_mcp_servers() -> list[MCPServer]:
+    url = os.getenv("MOCK_MCP_URL")  # e.g. http://localhost:8200/mcp
+    if not url:
+        return []
+    # Plain MCP: no Databricks token is sent to it. p5-deploy adds Databricks auth for the server
+    # on Databricks Apps. The timeout covers the server's own retries (3 attempts of up to 5 s).
+    return [MCPServer(name="najm_systems", url=url, handle_tool_error=True, timeout=30)]

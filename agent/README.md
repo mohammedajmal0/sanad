@@ -20,7 +20,11 @@ The Sanad Customer Service agent: an Agent Bricks project (the CLI is Beta). `ag
 - **Supervisor and specialists ([ADR 0005](../docs/adr/0005-supervisor-calls-specialists-as-tools.md)):**
   - The supervisor calls `customer_service`, the Customer Service sub-agent wrapped as a tool, and the Genie agent `ops_analytics` (`ops_analytics_ask`, `_poll`, `_query_result`).
   - The Genie agent was bound with `agentbricks tools add genie-agent <space id> --name ops_analytics --auth user`.
-- **Tools:** four UC functions bound in `agent.toml` with `auth = "user"` belong to the Customer Service sub-agent: `get_customer_summary`, `get_invoices`, `get_shipment_status` and `search_policies` ([tools/](../tools/), [ADR 0004](../docs/adr/0004-run-tools-as-the-asking-user.md)). They need the workspace's managed MCP servers preview, and the app's `mcp.functions` user scope, which `agentbricks deploy --allow-user-scope-update` adds. - **Writes:** `draft_credit_note` and `open_ticket` ([agent/tools/actions.py](agent/tools/actions.py)) pause for approval before they run (`REQUIRE_APPROVAL` in [agent/agent.py](agent/agent.py)). Credit notes above SAR 5,000 then wait for a manager. Until Phase 5 they are stand-ins that check the request and store nothing. The template's `get_current_time` and `send_message` were removed.
+- **Tools:** four UC functions bound in `agent.toml` with `auth = "user"` belong to the Customer Service sub-agent: `get_customer_summary`, `get_invoices`, `get_shipment_status` and `search_policies` ([tools/](../tools/), [ADR 0004](../docs/adr/0004-run-tools-as-the-asking-user.md)). They need the workspace's managed MCP servers preview, and the app's `mcp.functions` user scope, which `agentbricks deploy --allow-user-scope-update` adds. - **Writes go to Najm's systems through MCP (Phase 5):**
+  - `create_credit_note`, `create_ticket`, `create_case` and `post_teams_message` come from the MCP server in [mock_systems/](../mock_systems/), added in [agent/mcps.py](agent/mcps.py) when `MOCK_MCP_URL` is set.
+  - Every one of these tools except a read (`get_*`) pauses for approval, by default deny (`approval_rules` in [agent/agent.py](agent/agent.py)).
+  - The mock ERP enforces the SAR 5,000 rule.
+  - The Phase 4 stand-ins (`agent/tools/actions.py`) were removed, so the agent has no local tools.
 
 ## Run
 
@@ -28,6 +32,7 @@ The Sanad Customer Service agent: an Agent Bricks project (the CLI is Beta). `ag
 - **Locally on an 8 GB laptop:** don't use `agentbricks dev`. It peaks above 2 GB at startup (local proxy plus an MLflow server), and `systemd-oomd` then kills the whole VS Code window it runs under. Run the server alone in a memory-capped unit instead (about 380 MB, no local tracing):
 
   ```bash
+  # add --setenv=MOCK_MCP_URL=http://localhost:8200/mcp to use the mock systems (mock_systems/README.md)
   systemd-run --user --unit=sanad-agent-dev -p MemoryMax=1500M --working-directory="$PWD" \
     --setenv=PATH="$PATH" "$(which uv)" run start-server
   curl -sS localhost:8000/api/invocations -H 'Content-Type: application/json' \
@@ -165,8 +170,8 @@ A message's `content` is its answer text. Models that reason (Claude 5.x) add a 
 
 ### Human approval
 
-`draft_credit_note` and `open_ticket` are gated by `HumanInTheLoopMiddleware`. Start a turn asking
-for a credit note or a ticket. When the output or event stream contains an `interrupt`, submit a new invocation with the same
+Every write tool from the MCP server is gated by `HumanInTheLoopMiddleware`. Start a turn asking
+for a credit note, a ticket or a Teams post. When the output or event stream contains an `interrupt`, submit a new invocation with the same
 application session:
 
 ```json

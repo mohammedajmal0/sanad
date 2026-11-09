@@ -35,7 +35,6 @@ from agent.prompt import SUPERVISOR, load_system_prompt
 
 # Importing the tools package auto-registers every tool module.
 from agent.tools import all_tools
-from agent.tools.actions import MANAGER_LIMIT_SAR
 
 # A Unity Catalog AI Gateway model service, served from the `system.ai` schema and queried through
 # the gateway (see `use_ai_gateway=True` below). Swap for any `system.ai.*` model service your
@@ -48,10 +47,13 @@ MODEL = (
 )  # Free Edition has no Claude (checked 2026-11-08)
 
 
+MANAGER_LIMIT_SAR = 5000  # for the approval text only: the mock ERP enforces the rule itself
+
+
 def _approval_request(tool_call: Any, state: Any, runtime: Any) -> str:
     """What the approver reads before a write runs (written by Claude at my request)."""
-    a = tool_call["args"]
-    if tool_call["name"] == "draft_credit_note":
+    a, name = tool_call["args"], tool_call["name"]
+    if name == "create_credit_note":
         text = f"Draft a credit note of SAR {a.get('amount_sar')} for {a.get('invoice_id')}? "
         try:  # raw model arguments: don't let a bad amount break the approval request
             big = float(a.get("amount_sar", 0)) > MANAGER_LIMIT_SAR
@@ -59,16 +61,27 @@ def _approval_request(tool_call: Any, state: Any, runtime: Any) -> str:
             big = False
         manager = " Above SAR 5,000, so a manager must approve it next." if big else ""
         return f"{text}Reason: {a.get('reason')}{manager}"
-    return f"Open a {a.get('category')} ticket: {a.get('summary')}"
+    if name == "create_ticket":
+        return (
+            f"Open a {a.get('priority', 'medium')} {a.get('category')} ticket: {a.get('summary')}"
+        )
+    if name == "create_case":
+        return f"Open a CRM case for {a.get('account_id')}: {a.get('subject')}"
+    if name == "post_teams_message":
+        return f"Post to Teams #{a.get('channel')}: {a.get('text')}"
+    return f"Run {name} with {a}?"  # a write tool added to the MCP server later
 
 
-# Every write pauses for a person before it runs (agent/tools/actions.py). The agent emits an
-# `interrupt`; the client resumes with `input.resume` and the same session id. "respond" is left
-# out: the approver approves, edits the arguments, or rejects.
-REQUIRE_APPROVAL = {
-    name: {"allowed_decisions": ["approve", "edit", "reject"], "description": _approval_request}
-    for name in ("draft_credit_note", "open_ticket")
-}
+def approval_rules(tool_names: list[str]) -> dict:
+    """Every Najm-system tool except a read (get_*) pauses for a person before it runs.
+
+    Default deny: a tool the MCP server adds later is gated until someone decides otherwise. The
+    agent emits an `interrupt`; the client resumes with `input.resume` and the same session id.
+    "respond" is left out: the approver approves, edits the arguments, or rejects.
+    """
+    rule = {"allowed_decisions": ["approve", "edit", "reject"], "description": _approval_request}
+    return {name: rule for name in tool_names if not name.startswith("get_")}
+
 
 # The specialists the supervisor calls as tools (docs/adr/0005): the UC function tools each one
 # gets (agent.toml ids; search_policies is shared) and the description the supervisor reads to
@@ -178,15 +191,19 @@ async def create_agent_graph(
     llm = _RoutedChatDatabricks(
         endpoint=endpoint, workspace_client=_app_workspace_client(), use_ai_gateway=True
     )
+    # UC function tools go to the specialists that own them; the rest of the MCP tools (Najm's
+    # systems, from mcps.py) belong to the supervisor, which holds the approval gate.
+    owned = set().union(*(ids for ids, _ in SPECIALISTS.values()))
+    systems = [t for t in mcp if t.name.rsplit("__", 1)[-1] not in owned]
     tools = [
         *all_tools(),
+        *systems,
         *memory_tools(actor),
         *genie_tools(workspace_client_for=workspace_client_for),
         *(_specialist(name, llm, mcp) for name in SPECIALISTS),
     ]
-    middleware = (
-        [HumanInTheLoopMiddleware(interrupt_on=REQUIRE_APPROVAL)] if REQUIRE_APPROVAL else []
-    )
+    gated = approval_rules([t.name for t in systems])
+    middleware = [HumanInTheLoopMiddleware(interrupt_on=gated)] if gated else []
     return create_agent(
         model=llm,
         tools=tools,

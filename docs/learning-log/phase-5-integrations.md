@@ -65,3 +65,33 @@ These were written by Claude at my request; I must be able to defend them: the t
 1. Which failures should an integration retry, and which must it never retry? Give an example of each.
 2. Why must the idempotency key be created before the first attempt and reused, and what goes wrong if each attempt makes its own?
 3. Your create call failed after every retry. What do you tell the user, and why not "nothing was changed"?
+
+### 2026-11-09: The agent writes to Najm's systems through MCP
+
+**What we built:**
+- **The MCP server is wired in.** [agent/agent/mcps.py](../../agent/agent/mcps.py) adds it when `MOCK_MCP_URL` is set, as a plain MCP server, so no Databricks token is sent to it. `handle_tool_error=True` turns a failed call into a message the supervisor can explain.
+- **The supervisor gets every MCP tool that isn't a UC function.**
+- **Default-deny approvals:** `approval_rules` gates every one of these tools except reads (`get_*`), so a write tool the server adds later is gated before anyone remembers to list it.
+- **Stand-ins removed:** the Phase 4 `actions.py` is gone, and the SAR 5,000 rule now lives in the mock ERP.
+- **Supervisor prompt, version 7:** names the four writes and the three reads, and adds a rule for an unavailable system.
+- **Result on the local agent against the live mock:**
+  - asked for a credit note, the turn paused; on approve, the ERP stored `CN-000002` and the answer quoted its id;
+  - "What is the status of that credit note now?" called `get_credit_note`, with no approval pause, and answered "drafted";
+  - "Post a one-line summary … to the billing channel" paused; on approve, `MSG-000001` appeared in the mock #billing channel.
+
+These were written by Claude at my request; I must be able to defend them: default deny for approvals, the approval texts, plain MCP for a local server, the new supervisor rules, and the `create_credit_note` reason description.
+
+**Key concepts:**
+- **Default deny beats a list.** Gating "everything except reads" means the safe choice happens automatically. A list of writes is safe only until someone forgets to update it.
+- **Never send a workspace token to a server you don't run inside Databricks.** The Databricks MCP client attaches workspace credentials, so a local or third-party server gets the plain client.
+- **The approval text is part of the safety design.** The approver judges the call by its arguments, so they must be readable: amount, invoice and reason.
+- **Discovery failure is already handled.** `mcp_tools` treats extra servers as optional: if the server is down when a turn starts, the agent runs without those tools.
+
+**Mistakes:**
+- **An invented policy code in a write.** The first credit note's reason said "policy code DUP", which no tool returned; the tool description asked the model to "name the policy". The description now asks for the `doc_id` exactly as a specialist cited it, and the re-run showed "fin-duplicate-invoices". In this run the approval step was the only human check, and I approved automatically; a real approver would have to catch it.
+- **A stale tool name in a test.** An earlier reformat had split a test line, so Claude's text replacement missed it. The test failed and caught that a renamed tool would have lost its manager note in the approval text.
+
+**Interview questions:**
+1. Your MCP server adds a new tool next month. How do you make sure the agent can't call it without approval, before anyone reviews it?
+2. Why must a Databricks token never reach a non-Databricks MCP server, and how does the agent avoid it?
+3. A write's arguments contain a detail no tool returned. Where can you catch it, and which layer should?

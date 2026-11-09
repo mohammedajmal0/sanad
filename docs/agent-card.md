@@ -16,10 +16,10 @@ Sanad answers billing, delivery, analytics and IT-support questions for Najm Sup
 
 | Agent | Tools | Data | Write actions (approval required) |
 |---|---|---|---|
-| Supervisor | `customer_service`, `service_desk` and the Genie agent `ops_analytics` as tools ([ADR 0005](adr/0005-supervisor-calls-specialists-as-tools.md)); mock Teams webhook (Phase 5) | Session store `sanad-sessions`; memory store `sanad-memory` (the user's own preferences only, never tool data) | Post a summary to a Teams channel |
-| Customer Service | UC functions `get_customer_summary`, `get_invoices`, `get_shipment_status`; policy retrieval (`search_policies`) with citations | `gold` ERP and CRM tables; returns and SLA policies | Draft a credit note (`draft_credit_note`, which pauses for approval; above SAR 5,000 it then waits for a manager); open a case (later) |
+| Supervisor | `customer_service`, `service_desk` and the Genie agent `ops_analytics` as tools ([ADR 0005](adr/0005-supervisor-calls-specialists-as-tools.md)); Najm's systems through the MCP server in `mock_systems/`: `create_credit_note`, `create_ticket`, `create_case`, `post_teams_message`, and `get_*` reads | Session store `sanad-sessions`; memory store `sanad-memory` (the user's own preferences only, never tool data) | Post a summary to a Teams channel (`post_teams_message`); every write below is also called by the supervisor and pauses for approval |
+| Customer Service | UC functions `get_customer_summary`, `get_invoices`, `get_shipment_status`; policy retrieval (`search_policies`) with citations | `gold` ERP and CRM tables; returns and SLA policies | Draft a credit note (`create_credit_note`; above SAR 5,000 the ERP holds it for a manager); open a CRM case (`create_case`) |
 | Ops Analytics | Genie agent *Sanad Ops Analytics* ([definition](../genie/ops_analytics.geniespace.json), deployed by the bundle) | `gold.delivery_sla_by_region`; the late rate is `SUM(late) / SUM(delivered)` | None (read-only) |
-| Service Desk | UC function `get_ticket_trend` (incident check: busiest days against a typical day); KB retrieval (`search_policies`); mock ITSM API via MCP (Phase 5) | Past tickets; KB articles | Open a ticket (`open_ticket`, which pauses for approval); update or route one, and an idempotency key on create (Phase 5) |
+| Service Desk | UC function `get_ticket_trend` (incident check: busiest days against a typical day); KB retrieval (`search_policies`); mock ITSM through MCP | Past tickets; KB articles | Open a ticket (`create_ticket`, with an idempotency key); update or route one (later) |
 
 ## Models
 

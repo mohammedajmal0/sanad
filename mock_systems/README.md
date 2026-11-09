@@ -27,6 +27,11 @@ A FastAPI mock of Najm's CRM, ERP, ITSM and a Teams channel. It runs locally in 
   - When every attempt fails, it says the system is unavailable and, for a create, not to try again.
   - The MCP endpoint is `/mcp` (streamable HTTP), served on port 8200, and it calls the API at `MOCK_API_URL`.
   - Tests: [tests/test_mcp_server.py](../tests/test_mcp_server.py).
+- **Deployed (p5-deploy, 2026-11-09):** the Databricks App `sanad-mock-systems`, declared in [databricks.yml](../databricks.yml).
+  - [app.py](app.py) serves the API and mounts the MCP server at `/mcp` in one process, and the MCP tools call the API on the same port. The tools are async, because sync tools deadlocked: the HTTP call waited on the event loop it was blocking.
+  - Deploy and start: `databricks bundle deploy --profile sanad`, then `databricks bundle run sanad_mock_systems --profile sanad`.
+  - State is in memory, so a restart empties it. Stop it with `databricks apps stop sanad-mock-systems --profile sanad`.
+  - [ADR 0006](../docs/adr/0006-mock-systems-behind-a-custom-mcp-app.md) records the design.
 - **Run both:**
   - with Docker: `docker compose -f mock_systems/compose.yaml up --build -d`;
   - without Docker: run the API command above, then `MOCK_API_URL=http://localhost:8100 uv run --with-requirements mock_systems/requirements.txt uvicorn mock_systems.mcp_server:app --port 8200`.

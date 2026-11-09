@@ -25,3 +25,5 @@ env:
   value: sanad-memory
 - name: AGENT_SESSION_STORE
   value: sanad-sessions
+- name: MOCK_MCP_APP
+  value: sanad-mock-systems

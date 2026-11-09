@@ -1,0 +1,5 @@
+# Databricks App for the mock systems (p5-deploy): REST API plus the MCP endpoint at /mcp.
+command: ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+env:
+  - name: MOCK_API_URL  # the MCP tools call the API in this same process
+    value: "http://localhost:8000"

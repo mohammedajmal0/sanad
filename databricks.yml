@@ -12,7 +12,20 @@ variables:
     lookup:
       warehouse: Serverless Starter Warehouse # found by name at deploy time, so no ID in git
 
+  agent_sp:
+    description: The agent app's service principal (application id), from `databricks apps get agent-bricks-sanad-cs`
+    default: 402d157e-900c-4aad-acfb-73b749d89b48
+
 resources:
+  apps:
+    sanad_mock_systems: # Phase 5: mock ERP, ITSM, CRM and Teams, with the MCP server the agent calls
+      name: sanad-mock-systems
+      description: Mock Najm ERP, ITSM, CRM and Teams with the MCP server the Sanad agent calls
+      source_code_path: ./mock_systems
+      permissions:
+        - level: CAN_USE # the agent calls it as its own service principal
+          service_principal_name: ${var.agent_sp}
+
   dashboards:
     sanad_gold:
       display_name: Najm operations (gold)

@@ -56,6 +56,7 @@ The audit query in [governance/audit.sql](../governance/audit.sql) finds PII tab
 
 ## Not yet covered
 
+- **Mock systems app (2026-11-09):** the agent's service principal has `CAN_USE` on the Databricks App `sanad-mock-systems` (databricks.yml), so it can call the mock ERP, ITSM, CRM and Teams. The mock can't tell which user asked, so approval is the human check. See [ADR 0006](adr/0006-mock-systems-behind-a-custom-mcp-app.md).
 - **Memory and sessions (2026-11-09):**
   - Deploy gives the app's service principal access to the `sanad-memory` and `sanad-sessions` stores. These are Agent Bricks stores, not Unity Catalog objects, so row filters and masks don't apply to them.
   - The actor partitions inside a store are not a security boundary: the app can read every user's memories.

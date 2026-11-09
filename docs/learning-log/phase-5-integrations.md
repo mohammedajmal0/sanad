@@ -127,3 +127,36 @@ These were written by Claude at my request; I must be able to defend them: telli
 1. Your agent's integration is down. What should the user see, and what must the agent never do next?
 2. How can an integration know whether a failed create might still have been saved, and why shouldn't the model decide that?
 3. Tools are discovered every turn. What does that buy you during an outage, and what does it cost?
+
+### 2026-11-09: The mock systems on Databricks Apps (Phase 5 done)
+
+**What we built** ([ADR 0006](../adr/0006-mock-systems-behind-a-custom-mcp-app.md)):
+- **One Databricks App,** `sanad-mock-systems`, declared in [databricks.yml](../../databricks.yml), with `CAN_USE` for the agent's service principal.
+  - [mock_systems/app.py](../../mock_systems/app.py) serves the API and mounts the MCP server at `/mcp`, and the MCP tools call the API on the same port.
+- **The MCP tools are async now.**
+- **DNS-rebinding protection is off on Apps only,** where every request comes through Databricks' authenticating proxy.
+- **The agent finds the app by name** (`MOCK_MCP_APP` in `agent/app.yaml`) and calls it with Databricks OAuth as its service principal ([agent/agent/mcps.py](../../agent/agent/mcps.py)).
+- **Results on Databricks:**
+  - My MCP client listed the deployed app's 7 tools, and a post returned `MSG-000001`.
+  - The deployed agent paused with "Draft a credit note of SAR 1440.71 for INV-050001? Reason: … fin-duplicate-invoices". On approve, the mock ERP held `CN-000001`, status `drafted`, which I read directly from the app's API.
+  - Memory: told two preferences, the agent saved both (in one `remember` call), and a new session recalled the role and both preferences.
+
+**Phase 5 is done.** The agent reads and writes the mock ERP, ITSM and CRM, and posts to the mock Teams, through a custom MCP server, with retries and a fallback on failure.
+
+These were written by Claude at my request; I must be able to defend them: one app instead of two, async tools, turning off DNS-rebinding protection on Apps only, finding the app by name, the `CAN_USE` grant, and the recall rule (supervisor prompt v9).
+
+**Key concepts:**
+- **A sync tool in an async server blocks everything.** FastMCP runs a plain function on the event loop. When the tool called the API in the same process, the API couldn't answer until the tool gave up: 16.5 s and three timeouts. Async tools fixed it, and the create took 0.04 s.
+- **The same code can behave differently once deployed.** Locally the API was a separate process, so the deadlock never showed. Running the combined app locally before the 10-minute deploy found it.
+- **A proxy changes the Host header.** Protection that trusts only `localhost` breaks behind any proxy. Decide where it applies, rather than turning it off everywhere.
+- **Find services by name, not by URL.** The app's URL is environment-specific, so the agent looks it up at runtime, and no URL is hard-coded.
+
+**Mistakes:**
+- **The sync-tool deadlock,** above. It was found locally, before the deploy.
+- **A claim of absence.** In one of two runs, "What do you remember about me?" got "I don't have any saved facts about you yet" without calling `recall`. Supervisor prompt v9 says to call `recall` first. Not yet re-run: it's a Phase 6 eval case.
+- **An unexplained failure.** One deployed memory request returned a body without `output`. Two re-runs returned HTTP 200, and the logs were unavailable while the app was stopping, so the cause is unknown. Next time, print the status and body before parsing.
+
+**Interview questions:**
+1. Your MCP server works locally but deadlocks when deployed in the same process as the API it calls. Why, and what are two ways to fix it?
+2. Why can DNS-rebinding protection be off for an app behind Databricks' proxy but must stay on for a local server?
+3. Your agent calls the mock systems as its service principal. What do you lose compared with calling them as the user, and how would you get that back?

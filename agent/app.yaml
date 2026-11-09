@@ -21,3 +21,7 @@ env:
   value: 402d157e-900c-4aad-acfb-73b749d89b48
 - name: DATABRICKS_AGENTBRICKS_RUNTIME_STORE_SCHEMA
   value: databricks_agentkit_runtime
+- name: AGENT_MEMORY_STORE
+  value: sanad-memory
+- name: AGENT_SESSION_STORE
+  value: sanad-sessions

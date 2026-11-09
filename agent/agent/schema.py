@@ -8,15 +8,20 @@ from pydantic import BaseModel, Field, model_validator
 
 
 class Citation(BaseModel):
-    source: Literal["document", "record"] = Field(
+    source: Literal["document", "record", "query"] = Field(
         description="document: a policy or KB article from search_policies. "
-        "record: a row from get_customer_summary, get_invoices or get_shipment_status."
+        "record: a row from get_customer_summary, get_invoices or get_shipment_status. "
+        "query: an ops_analytics (Genie) answer, which ran SQL on the gold tables."
     )
     ref: str = Field(
-        description="The doc_id (e.g. fin-duplicate-invoices) or the record id "
-        "(e.g. INV-027711, ORD-027711, ACC-00001), copied exactly."
+        description="The doc_id (e.g. fin-duplicate-invoices), the record id "
+        "(e.g. INV-027711, ORD-027711, ACC-00001), or for a query the deep_link that opens "
+        "its SQL and rows, copied exactly."
     )
-    title: str = Field(description="The document title, or the tool that returned the record.")
+    title: str = Field(
+        description="The document title, the tool that returned the record, or what the query "
+        "measured."
+    )
 
 
 class Answer(BaseModel):

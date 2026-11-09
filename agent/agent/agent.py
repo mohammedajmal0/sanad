@@ -25,12 +25,13 @@ from databricks_langchain import ChatDatabricks
 from langchain.agents import create_agent
 from langchain.agents.middleware import HumanInTheLoopMiddleware
 from langchain.agents.middleware.human_in_the_loop import HITLResponse
+from langchain_core.tools import BaseTool, tool
 from langgraph.types import Command
 from pydantic import TypeAdapter, ValidationError
 
 from agent.answer import StructuredAnswer
 from agent.mcps import build_mcp_servers
-from agent.prompt import load_system_prompt
+from agent.prompt import CUSTOMER_SERVICE, SUPERVISOR, load_system_prompt
 
 # Importing the tools package auto-registers every tool module.
 from agent.tools import all_tools
@@ -113,7 +114,11 @@ async def create_agent_graph(
     *,
     workspace_client_for: Callable[[str], WorkspaceClient] | None = None,
 ):
-    """Build the LangGraph agent: local tools + long-term-memory tools + any MCP tools.
+    """Build the supervisor: it calls each specialist as a tool (docs/adr/0005).
+
+    - Customer Service: its own agent with the UC function tools, wrapped as one tool.
+    - Ops Analytics: the Genie agent bound in agent.toml (ops_analytics_ask, _poll, _query_result).
+    - Local tools, memory tools and the approval gate stay on the supervisor.
 
     ``actor`` is the identity whose long-term memory the agent reads/writes; it's captured in the
     memory tools' closures (never exposed to the model).
@@ -123,29 +128,60 @@ async def create_agent_graph(
     request to request.
     """
     mcp = await mcp_tools(build_mcp_servers(), workspace_client_for=workspace_client_for)
-    tools = [
-        *all_tools(),
-        *memory_tools(actor),
-        *genie_tools(workspace_client_for=workspace_client_for),
-        *mcp,
-    ]
-    middleware = (
-        [HumanInTheLoopMiddleware(interrupt_on=REQUIRE_APPROVAL)] if REQUIRE_APPROVAL else []
-    )
     endpoint = model or MODEL
     # use_ai_gateway routes to the Unity Catalog AI Gateway (`<host>/ai-gateway/mlflow/v1`), so
     # `endpoint` is a `system.ai.*` model name rather than a serving-endpoint name.
     llm = _RoutedChatDatabricks(
         endpoint=endpoint, workspace_client=_app_workspace_client(), use_ai_gateway=True
     )
+    tools = [
+        *all_tools(),
+        *memory_tools(actor),
+        *genie_tools(workspace_client_for=workspace_client_for),
+        _customer_service(llm, mcp),
+    ]
+    middleware = (
+        [HumanInTheLoopMiddleware(interrupt_on=REQUIRE_APPROVAL)] if REQUIRE_APPROVAL else []
+    )
     return create_agent(
         model=llm,
         tools=tools,
-        system_prompt=load_system_prompt(),  # MLflow Prompt Registry, @production
+        system_prompt=load_system_prompt(SUPERVISOR),  # MLflow Prompt Registry, @production
         # Every turn ends with a schema-checked Answer (agent/answer.py explains why not response_format).
         middleware=[*middleware, StructuredAnswer(llm)],
         checkpointer=checkpointer(),
     )
+
+
+def _customer_service(llm: Any, tools: list[BaseTool]) -> BaseTool:
+    """The Customer Service specialist: its own agent and prompt, wrapped as one supervisor tool."""
+    specialist = create_agent(
+        model=llm,
+        tools=tools,
+        system_prompt=load_system_prompt(CUSTOMER_SERVICE),
+        middleware=[StructuredAnswer(llm)],
+        # Stateless: each call starts fresh. None would inherit the supervisor's checkpointer and
+        # store every inner step in the session; the supervisor holds the conversation.
+        checkpointer=False,
+    )
+
+    # The description below is what the supervisor reads to route (written by Claude at my request).
+    @tool
+    async def customer_service(question: str) -> dict:
+        """Ask the Customer Service specialist about one customer's account, invoices, orders or
+        shipments, or the billing, refund and delivery policies that apply to them. It looks the
+        records up with the asking user's permissions and returns an Answer with citations.
+        `question` must stand on its own: include the customer's name and any ids, dates or
+        periods from the conversation."""
+        # Workaround (LangGraph 1.2.20): a nested graph inherits run_agent's durability="sync",
+        # and with checkpointer=False it then awaits a checkpoint save that never starts
+        # (AttributeError: _put_checkpoint_fut). Passing the standalone default avoids that.
+        result = await specialist.ainvoke(
+            {"messages": [{"role": "user", "content": question}]}, durability="async"
+        )
+        return result["messages"][-1].additional_kwargs["answer"]
+
+    return customer_service
 
 
 async def recovery_input(

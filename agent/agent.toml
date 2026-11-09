@@ -24,5 +24,10 @@ id = "search_policies"
 auth = "user"
 source = {kind = "uc_function", function = "sanad.ai.search_policies"}
 
+[[tools]]
+id = "ops_analytics"
+auth = "user"
+source = {kind = "genie_agent", space_id = "01f1dc3fc23a1d63af878511dbc4b2de"}
 [experimental.prompts]
 customer_service = "sanad.prompts.customer_service"
+supervisor = "sanad.prompts.supervisor"

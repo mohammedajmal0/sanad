@@ -192,3 +192,52 @@ These were written by Claude at my request; I must be able to defend them: the t
 1. A Genie agent picks the right region but averages a rate column. Where do you fix it: the table, the space or the instructions? In what order, and why?
 2. How do you evaluate a natural-language-to-SQL agent so that a pass doesn't just prove it memorized your examples?
 3. Genie runs as the person asking. What does `CAN_RUN` on the space grant, and what still decides which rows they see?
+
+### 2026-11-09: The supervisor routes to Customer Service and Ops Analytics
+
+**What we built** ([ADR 0005](../adr/0005-supervisor-calls-specialists-as-tools.md)):
+- **Supervisor:** [agent/agent/agent.py](../../agent/agent/agent.py).
+  - The old agent is now the Customer Service sub-agent: the UC tools, its prompt and the `Answer` schema, wrapped as one tool, `customer_service(question)`.
+  - The Genie agent is bound with `agentbricks tools add genie-agent <space id> --name ops_analytics --auth user`. That gives the supervisor `ops_analytics_ask`, `_poll` and `_query_result`.
+- **Prompts:** the routing rules are in [prompts/supervisor.md](../../agent/agent/prompts/supervisor.md), registered as `sanad.prompts.supervisor@production` and bound with `agentbricks experimental prompts bind`. [prompt.py](../../agent/agent/prompt.py) loads and registers prompts by name.
+- **Customer Service prompt, version 2:** the summary only counts issues, so look at the invoices; and a flagged record needs its policy before the answer.
+- **Citations:**
+  - a third type, `query`, cited by Genie's `deep_link`;
+  - [answer.py](../../agent/agent/answer.py) now carries the specialists' citations over in code.
+- **Tests:**
+  - each prompt names the tools it owns;
+  - a `query` citation is valid;
+  - specialist citations are taken from the current turn only.
+- **Results on the local agent:**
+  - Gate A passed 4 of 4 with Customer Service prompt v2, against 1 of 3 with v1;
+  - the Jeddah question went only to Genie;
+  - a two-part question was split into two self-contained questions and the answers combined.
+- **Deployed:** with `--allow-user-scope-update`, which added the `genie` user scope. Asked the Jeddah question, the deployed agent called only `ops_analytics_ask` and answered as me.
+
+These were written by Claude at my request; I must be able to defend them: the routing rules, the `customer_service` tool description, the `query` citation and its `deep_link` reference, the two new Customer Service rules, and carrying citations over in code.
+
+**Key concepts:**
+- **Specialists as tools.** A specialist is a tool whose body is another agent, and the supervisor routes by reading tool descriptions.
+  - A router node would cost one model call instead of three, but it can't send a two-part question to two specialists.
+  - Genie is already an agent, so it needs no wrapper.
+- **Stateless specialists.**
+  - The sub-agent runs with `checkpointer=False`, so the supervisor has to write self-contained questions. In practice, "…and which carrier had the worst late-delivery rate in Jeddah last quarter?" went out as two complete questions.
+  - `checkpointer=None` means "inherit the parent's"; `False` means "none".
+- **A gate run once is a sample of one.** Gate A passed once on 2026-11-08. Today the same prompt, model and question passed 1 of 3. Run a gate several times; Phase 6 runs each eval case more than once.
+- **Read the trace before changing anything.** All three failures came from the specialist stopping early (summary only, or no `search_policies`), not from routing. The `customer_service` span's output showed exactly what the supervisor received.
+- **Copying is a model's weak spot, so code carries provenance.** The supervisor's format step was told to keep the specialists' citations and still dropped a policy when merging two answers. This is the same lesson as the answer schema: the fix is an extra step, not a hope.
+- **The model picks the question, never the scope.** The Genie space id comes from `agent.toml`, and the credentials are the asking user's.
+
+**Mistakes:**
+- **LangGraph crash.** The first run failed with `'AsyncPregelLoop' object has no attribute '_put_checkpoint_fut'`. The nested graph inherited `durability="sync"` from `run_agent`, but with `checkpointer=False` it never starts a save. The server journal showed it. Fixed by passing `durability="async"` to the sub-agent.
+- **Flaky Gate A.** It passed 1 of 3 until the two Customer Service rules were made explicit (version 2), then 4 of 4. These are small samples.
+- **A dropped citation.** The supervisor's format step dropped the specialist's policy citation on a two-part question. It's now merged in code.
+- **Still open: the specialist under-cites.** In one run the Customer Service format step cited only one of the two duplicate invoices. Gate A passed regardless. Left for a Phase 6 citation scorer.
+- **The supervisor misread a percentage.** On the deployed run it wrote "381 of those late shipments (59.3% of Jeddah's deliveries)". 59.3% is Red Sea Cargo's own late rate (381 of 642); 381 of Jeddah's 2,559 deliveries is 14.9%. Genie's numbers were right, and the rewording broke them. Left for the Phase 6 correctness judge.
+- **Deploy into starting compute.** Claude started the app with `--no-wait` and deployed straight away, so the scope update failed: "Could not reconcile Apps user scopes". Calling the same Apps API directly showed the real cause: compute must be `ACTIVE` or `STOPPED` to update. Waited for `ACTIVE`, then redeployed.
+- **Stale systemd unit.** Yesterday's local-server unit was left "failed": exit 143 when stopped. That blocked a new start until `systemctl --user reset-failed sanad-agent-dev`.
+
+**Interview questions:**
+1. Router node or specialists as tools: when would you choose each, and what does each cost per question?
+2. Your specialist agents are stateless, and a user asks a follow-up that says "it". Where does that get resolved, and how would you test it?
+3. A gate passed yesterday and fails 2 of 3 today with no code change. What do you conclude, and what changes in how you run gates?

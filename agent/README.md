@@ -7,12 +7,15 @@ The Sanad Customer Service agent: an Agent Bricks project (the CLI is Beta). `ag
 ## Sanad setup (Free Edition, checked 2026-11-08)
 
 - **Model:** `system.ai.gpt-oss-120b` (`MODEL` in [agent/agent.py](agent/agent.py)), through the AI Gateway. Free Edition offers no Claude model. List what it does offer with `agentbricks -p sanad experimental models list`.
-- **System prompt:** `sanad.prompts.customer_service@production` in the MLflow Prompt Registry, bound in `agent.toml`. Edit [agent/prompts/customer_service.md](agent/prompts/customer_service.md), then run `DATABRICKS_CONFIG_PROFILE=sanad uv run python -m agent.prompt` to register a new version and move `@production`. It lives in its own schema (`CREATE SCHEMA sanad.prompts`), because deploy grants the app `MANAGE` there.
+- **System prompts:** `sanad.prompts.supervisor@production` and `sanad.prompts.customer_service@production` in the MLflow Prompt Registry, bound in `agent.toml`. Edit [agent/prompts/](agent/prompts/)`<name>.md`, then run `DATABRICKS_CONFIG_PROFILE=sanad uv run python -m agent.prompt <name>` to register a new version and move `@production`. It lives in its own schema (`CREATE SCHEMA sanad.prompts`), because deploy grants the app `MANAGE` there.
 - **Answer:** every turn ends with one extra model call, with no tools, that returns the `Answer` schema ([agent/answer.py](agent/answer.py), [agent/schema.py](agent/schema.py)). LangChain's `response_format` doesn't work with gpt-oss behind the gateway: it ignores the forced tool call, and it rejects `response_format` together with tools.
 - **No memory or session store yet.** Both were unbound after `init`, and the memory task later in Phase 4 binds them. Conversation history lives in process memory.
 - **Tracing:** deployed runs trace to the MLflow experiment `/Shared/agentbricks_traces/sanad-cs-bevrqu`.
 - **Deployed** as the Databricks App `agent-bricks-sanad-cs`, with its own service principal. Keep it stopped between uses: `databricks apps start|stop agent-bricks-sanad-cs --profile sanad`.
-- **Tools:** three UC functions bound in `agent.toml` with `auth = "user"`: `get_customer_summary`, `get_invoices`, `get_shipment_status` ([tools/](../tools/), [ADR 0004](../docs/adr/0004-run-tools-as-the-asking-user.md)). They need the workspace's managed MCP servers preview, and the app's `mcp.functions` user scope, which `agentbricks deploy --allow-user-scope-update` adds. The template's `get_current_time` and approval-gated `send_message` stay until the approval task.
+- **Supervisor and specialists ([ADR 0005](../docs/adr/0005-supervisor-calls-specialists-as-tools.md)):**
+  - The supervisor calls `customer_service`, the Customer Service sub-agent wrapped as a tool, and the Genie agent `ops_analytics` (`ops_analytics_ask`, `_poll`, `_query_result`).
+  - The Genie agent was bound with `agentbricks tools add genie-agent <space id> --name ops_analytics --auth user`.
+- **Tools:** four UC functions bound in `agent.toml` with `auth = "user"` belong to the Customer Service sub-agent: `get_customer_summary`, `get_invoices`, `get_shipment_status` and `search_policies` ([tools/](../tools/), [ADR 0004](../docs/adr/0004-run-tools-as-the-asking-user.md)). They need the workspace's managed MCP servers preview, and the app's `mcp.functions` user scope, which `agentbricks deploy --allow-user-scope-update` adds. The template's `get_current_time` and approval-gated `send_message` stay until the approval task.
 
 ## Run
 
@@ -34,7 +37,7 @@ The Sanad Customer Service agent: an Agent Bricks project (the CLI is Beta). `ag
 
 - **Phase 4:** the Customer Service agent; UC function tools (`get_customer_summary`, `get_invoices`, `get_shipment_status`); a retrieval tool that returns citations; a system prompt in the MLflow prompt registry; and a Pydantic answer schema (`answer`, `citations`, `confidence`, `next_action`).
 - **Phase 4, after Gate A:**
-  - a supervisor graph;
+  - the supervisor: done on 2026-11-09 ([ADR 0005](../docs/adr/0005-supervisor-calls-specialists-as-tools.md)), routing to Customer Service and Ops Analytics;
   - Ops Analytics: the Genie agent *Sanad Ops Analytics* exists since 2026-11-09 ([genie/](../genie/ops_analytics.geniespace.json), checked by [evals/ops_genie.py](../evals/ops_genie.py)). The supervisor task binds it with `agentbricks tools add genie-agent <space id>` and `auth = "user"`;
   - the Service Desk specialist;
   - an approval interrupt before every write;
@@ -46,7 +49,8 @@ The Sanad Customer Service agent: an Agent Bricks project (the CLI is Beta). `ag
 
 Since 2026-11-07, Claude writes these at my request, and each one is logged in the [learning log](../docs/learning-log/phase-4-agent.md):
 - Phase 4: the system prompt, the answer schema and every tool description.
-- Later in Phase 4: the routing rules, the business rules (e.g. credit notes above SAR 5,000 need manager approval) and the approval message wording.
+- Phase 4: the routing rules ([prompts/supervisor.md](agent/prompts/supervisor.md)) and the `customer_service` tool description.
+- Later in Phase 4: the business rules (e.g. credit notes above SAR 5,000 need manager approval) and the approval message wording.
 
 ## Done when
 

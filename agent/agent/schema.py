@@ -10,12 +10,13 @@ from pydantic import BaseModel, Field, model_validator
 class Citation(BaseModel):
     source: Literal["document", "record", "query"] = Field(
         description="document: a policy or KB article from search_policies. "
-        "record: a row from get_customer_summary, get_invoices or get_shipment_status. "
+        "record: a row from a lookup tool (get_customer_summary, get_invoices, "
+        "get_shipment_status or get_ticket_trend). "
         "query: an ops_analytics (Genie) answer, which ran SQL on the gold tables."
     )
     ref: str = Field(
         description="The doc_id (e.g. fin-duplicate-invoices), the record id "
-        "(e.g. INV-027711, ORD-027711, ACC-00001), or for a query the deep_link that opens "
+        "(e.g. INV-027711, ORD-027711, ACC-00001, TKT-010001), or for a query the deep_link that opens "
         "its SQL and rows, copied exactly."
     )
     title: str = Field(
@@ -37,10 +38,12 @@ class Answer(BaseModel):
         description="high: every claim comes from a cited tool result. medium: you chose between "
         "several matching records or documents. low: the tools did not answer the question."
     )
-    next_action: Literal["none", "draft_credit_note", "open_case", "ask_user"] = Field(
-        description="What a person should do next, if a policy calls for it. You never do it "
-        "yourself: draft_credit_note and open_case need human approval. ask_user: you need "
-        "more detail (e.g. which of several customers)."
+    next_action: Literal["none", "draft_credit_note", "open_case", "open_ticket", "ask_user"] = (
+        Field(
+            description="What a person should do next, if a policy calls for it. You never do it "
+            "yourself: draft_credit_note, open_case and open_ticket need human approval. ask_user: you need "
+            "more detail (e.g. which of several customers)."
+        )
     )
 
     @model_validator(mode="after")

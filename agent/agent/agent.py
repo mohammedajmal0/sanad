@@ -25,13 +25,13 @@ from databricks_langchain import ChatDatabricks
 from langchain.agents import create_agent
 from langchain.agents.middleware import HumanInTheLoopMiddleware
 from langchain.agents.middleware.human_in_the_loop import HITLResponse
-from langchain_core.tools import BaseTool, tool
+from langchain_core.tools import BaseTool, StructuredTool
 from langgraph.types import Command
 from pydantic import TypeAdapter, ValidationError
 
 from agent.answer import StructuredAnswer
 from agent.mcps import build_mcp_servers
-from agent.prompt import CUSTOMER_SERVICE, SUPERVISOR, load_system_prompt
+from agent.prompt import SUPERVISOR, load_system_prompt
 
 # Importing the tools package auto-registers every tool module.
 from agent.tools import all_tools
@@ -51,6 +51,31 @@ MODEL = (
 # When a listed tool is about to run, the agent pauses and emits an `interrupt` event; the client
 # resumes by sending `resume` with the same session id. Empty this dict to disable approval gating.
 REQUIRE_APPROVAL = {"send_message": True}
+
+# The specialists the supervisor calls as tools (docs/adr/0005): the UC function tools each one
+# gets (agent.toml ids; search_policies is shared) and the description the supervisor reads to
+# route. Each has its prompt at sanad.prompts.<name>. Written by Claude at my request.
+SPECIALISTS = {
+    "customer_service": (
+        {"get_customer_summary", "get_invoices", "get_shipment_status", "search_policies"},
+        (
+            "Ask the Customer Service specialist about one customer's account, invoices, orders or "
+            "shipments, or the billing, refund and delivery policies that apply to them. It looks the "
+            "records up with the asking user's permissions and returns an Answer with citations. "
+            "`question` must stand on its own: include the customer's name and any ids, dates or "
+            "periods from the conversation."
+        ),
+    ),
+    "service_desk": (
+        {"get_ticket_trend", "search_policies"},
+        (
+            "Ask the Service Desk specialist about an IT problem a staff member reports (VPN, email, "
+            "laptop, password, ERP access or printer). It checks whether recent tickets show an "
+            "incident, finds the knowledge-base fix, and returns an Answer with citations. `question` "
+            "must stand on its own: include the symptom and when it started."
+        ),
+    ),
+}
 
 
 class _RoutedChatDatabricks(ChatDatabricks):
@@ -116,7 +141,8 @@ async def create_agent_graph(
 ):
     """Build the supervisor: it calls each specialist as a tool (docs/adr/0005).
 
-    - Customer Service: its own agent with the UC function tools, wrapped as one tool.
+    - Customer Service and Service Desk: each its own agent with its UC function tools (SPECIALISTS),
+      wrapped as one tool.
     - Ops Analytics: the Genie agent bound in agent.toml (ops_analytics_ask, _poll, _query_result).
     - Local tools, memory tools and the approval gate stay on the supervisor.
 
@@ -138,7 +164,7 @@ async def create_agent_graph(
         *all_tools(),
         *memory_tools(actor),
         *genie_tools(workspace_client_for=workspace_client_for),
-        _customer_service(llm, mcp),
+        *(_specialist(name, llm, mcp) for name in SPECIALISTS),
     ]
     middleware = (
         [HumanInTheLoopMiddleware(interrupt_on=REQUIRE_APPROVAL)] if REQUIRE_APPROVAL else []
@@ -153,26 +179,21 @@ async def create_agent_graph(
     )
 
 
-def _customer_service(llm: Any, tools: list[BaseTool]) -> BaseTool:
-    """The Customer Service specialist: its own agent and prompt, wrapped as one supervisor tool."""
+def _specialist(name: str, llm: Any, mcp: list[BaseTool]) -> BaseTool:
+    """A specialist: its own agent, prompt and UC tools, wrapped as one supervisor tool."""
+    tool_ids, description = SPECIALISTS[name]
     specialist = create_agent(
         model=llm,
-        tools=tools,
-        system_prompt=load_system_prompt(CUSTOMER_SERVICE),
+        # MCP names UC function tools <catalog>__<schema>__<function>
+        tools=[t for t in mcp if t.name.rsplit("__", 1)[-1] in tool_ids],
+        system_prompt=load_system_prompt(name),
         middleware=[StructuredAnswer(llm)],
         # Stateless: each call starts fresh. None would inherit the supervisor's checkpointer and
         # store every inner step in the session; the supervisor holds the conversation.
         checkpointer=False,
     )
 
-    # The description below is what the supervisor reads to route (written by Claude at my request).
-    @tool
-    async def customer_service(question: str) -> dict:
-        """Ask the Customer Service specialist about one customer's account, invoices, orders or
-        shipments, or the billing, refund and delivery policies that apply to them. It looks the
-        records up with the asking user's permissions and returns an Answer with citations.
-        `question` must stand on its own: include the customer's name and any ids, dates or
-        periods from the conversation."""
+    async def ask(question: str) -> dict:
         # Workaround (LangGraph 1.2.20): a nested graph inherits run_agent's durability="sync",
         # and with checkpointer=False it then awaits a checkpoint save that never starts
         # (AttributeError: _put_checkpoint_fut). Passing the standalone default avoids that.
@@ -181,7 +202,7 @@ def _customer_service(llm: Any, tools: list[BaseTool]) -> BaseTool:
         )
         return result["messages"][-1].additional_kwargs["answer"]
 
-    return customer_service
+    return StructuredTool.from_function(coroutine=ask, name=name, description=description)
 
 
 async def recovery_input(

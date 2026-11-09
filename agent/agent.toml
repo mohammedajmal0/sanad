@@ -28,6 +28,11 @@ source = {kind = "uc_function", function = "sanad.ai.search_policies"}
 id = "ops_analytics"
 auth = "user"
 source = {kind = "genie_agent", space_id = "01f1dc3fc23a1d63af878511dbc4b2de"}
+[[tools]]
+id = "get_ticket_trend"
+auth = "user"
+source = {kind = "uc_function", function = "sanad.ai.get_ticket_trend"}
 [experimental.prompts]
 customer_service = "sanad.prompts.customer_service"
 supervisor = "sanad.prompts.supervisor"
+service_desk = "sanad.prompts.service_desk"

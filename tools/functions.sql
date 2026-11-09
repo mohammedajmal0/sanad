@@ -125,3 +125,37 @@ SELECT * FROM sanad.ai.get_invoices('ACC-00001') WHERE issue_type = 'duplicate';
 SELECT * FROM sanad.ai.get_shipment_status('ORD-027711');
 --    expect fin-duplicate-invoices in the top 5 (rank 4 on 2026-11-08)
 SELECT doc_id, title FROM sanad.ai.search_policies('We billed a customer twice. How soon must we tell them?');
+
+-- 7. Service Desk (2026-11-09): one IT category -> its busiest recent days, next to the category's
+--    typical day. Several days far above typical mean an incident many users share. Tickets carry
+--    no PII and no region, so there is no guard; only it_support gets EXECUTE. The window is
+--    relative to today, like "last quarter" in the Genie agent. Written by Claude at my request.
+CREATE OR REPLACE FUNCTION sanad.ai.get_ticket_trend(
+  category_name STRING COMMENT 'One IT ticket category: "VPN", "Email", "Laptop", "Password reset", "ERP access" or "Printer"'
+)
+RETURNS TABLE (
+  created_date DATE, tickets BIGINT, high_priority BIGINT, open_tickets BIGINT,
+  typical_per_day DOUBLE, example_ticket_id STRING
+)
+COMMENT 'Busiest days of the last 60 days for one IT ticket category, busiest first (up to 15 days): created_date, tickets, high_priority, open_tickets, typical_per_day (the category''s average day over the 90 days before that) and an example_ticket_id to cite. Several days far above typical_per_day mean an incident that many users share. Use it when someone reports an IT problem, to see whether it is part of an incident, then call search_policies for the knowledge-base fix.'
+RETURN
+  WITH t AS (
+    SELECT * FROM sanad.silver.tickets
+    WHERE lower(category) = lower(get_ticket_trend.category_name)
+  ),
+  typical AS (
+    SELECT count(*) / 90.0 AS per_day FROM t
+    WHERE created_at >= date_sub(current_date(), 150) AND created_at < date_sub(current_date(), 60)
+  )
+  SELECT to_date(t.created_at), count(*), count_if(t.priority = 'high'),
+         count_if(t.status = 'open'), round(any_value(typical.per_day), 1), min(t.ticket_id)
+  FROM t CROSS JOIN typical
+  WHERE t.created_at >= date_sub(current_date(), 60)
+  GROUP BY to_date(t.created_at)
+  ORDER BY count(*) DESC, to_date(t.created_at) DESC
+  LIMIT 15;
+
+GRANT EXECUTE ON FUNCTION sanad.ai.get_ticket_trend TO `it_support`;
+
+--    expect the VPN incident first: 2026-10-19 with 30 tickets, typical_per_day about 2
+SELECT * FROM sanad.ai.get_ticket_trend('vpn');

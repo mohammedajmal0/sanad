@@ -39,7 +39,7 @@ The Sanad Customer Service agent: an Agent Bricks project (the CLI is Beta). `ag
 - **Phase 4, after Gate A:**
   - the supervisor: done on 2026-11-09 ([ADR 0005](../docs/adr/0005-supervisor-calls-specialists-as-tools.md)), routing to Customer Service and Ops Analytics;
   - Ops Analytics: the Genie agent *Sanad Ops Analytics* exists since 2026-11-09 ([genie/](../genie/ops_analytics.geniespace.json), checked by [evals/ops_genie.py](../evals/ops_genie.py)). The supervisor task binds it with `agentbricks tools add genie-agent <space id>` and `auth = "user"`;
-  - the Service Desk specialist;
+  - the Service Desk specialist: done on 2026-11-09, with `get_ticket_trend` plus `search_policies`. Each specialist's tools and routing description are in `SPECIALISTS` in [agent/agent.py](agent/agent.py);
   - an approval interrupt before every write;
   - session and memory stores in `agent.toml`.
 - **Phase 5:** the mock systems behind a custom MCP server, with retries and a fallback on failure.

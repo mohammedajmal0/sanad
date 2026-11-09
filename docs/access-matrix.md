@@ -16,6 +16,7 @@ Every group also gets `USE CATALOG` on `sanad` and `USE SCHEMA` on `gold`: the t
 | `ai.chunks_index` | `SELECT` (needed by `search_policies`) | `SELECT` | `SELECT` |
 | `ai.get_customer_summary`, `ai.get_invoices`, `ai.get_shipment_status` (agent tools) | `EXECUTE` (own region only, through `customer_360`) | none (their specialist comes later in Phase 4) | none |
 | `ai.search_policies` (agent tool) | `EXECUTE` | `EXECUTE` | `EXECUTE` |
+| `ai.get_ticket_trend` (Service Desk tool) | none | none | `EXECUTE` (tickets have no PII and no region) |
 | `ops.*` | none | none | none |
 | `prompts.*` (MLflow Prompt Registry) | none | none | none |
 | Genie agent *Sanad Ops Analytics* (workspace object, in [databricks.yml](../databricks.yml)) | none | `CAN_RUN` | none |

@@ -12,7 +12,7 @@ import mlflow
 
 SCHEMA = "sanad.prompts"  # its own schema: deploy grants the app MANAGE there
 PROMPTS = Path(__file__).parent / "prompts"
-CUSTOMER_SERVICE, SUPERVISOR = "customer_service", "supervisor"
+SUPERVISOR = "supervisor"  # each specialist's prompt is named after it (agent.SPECIALISTS)
 
 
 def load_system_prompt(name: str) -> str:

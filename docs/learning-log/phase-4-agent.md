@@ -241,3 +241,40 @@ These were written by Claude at my request; I must be able to defend them: the r
 1. Router node or specialists as tools: when would you choose each, and what does each cost per question?
 2. Your specialist agents are stateless, and a user asks a follow-up that says "it". Where does that get resolved, and how would you test it?
 3. A gate passed yesterday and fails 2 of 3 today with no code change. What do you conclude, and what changes in how you run gates?
+
+### 2026-11-09: The Service Desk specialist
+
+**What we built:**
+- **New tool:** `sanad.ai.get_ticket_trend(category_name)` in [tools/functions.sql](../../tools/functions.sql).
+  - It returns the busiest days of the last 60 for one IT category, each next to `typical_per_day` (the category's average day over the 90 days before), plus an `example_ticket_id` to cite.
+  - `EXECUTE` goes to `it_support` only. It's bound with `agentbricks tools add uc-function … --auth user`.
+  - Check: VPN shows 30 tickets on 2026-10-19 against a typical 2.2 a day.
+- **One table for all specialists:** `SPECIALISTS` in [agent/agent/agent.py](../../agent/agent/agent.py) lists each specialist's UC tools and the description the supervisor routes by, and `_specialist(name)` builds each one.
+  - Service Desk gets `get_ticket_trend` and `search_policies`, with the prompt `sanad.prompts.service_desk`.
+- **Supervisor prompt, version 2:** IT problems now go to `service_desk`.
+- **Schema:** ticket ids are valid records, and `open_ticket` is a new `next_action`.
+- **Test:** every bound UC tool belongs to a specialist whose prompt names it.
+- **Results on the local agent:**
+  - "VPN keeps dropping every few minutes since Monday's update. Is it just me?" went only to `service_desk`, which called `get_ticket_trend('VPN')` and `search_policies`. It answered that it's not just you (tickets spiked after the update) and set `next_action` to `open_ticket`.
+  - Gate A still passes after the refactor.
+
+These were written by Claude at my request; I must be able to defend them: the function (the 60- and 90-day windows, the busiest-first order, its columns and description), the `it_support`-only grant, the Service Desk prompt, its routing description, and `open_ticket`.
+
+**Key concepts:**
+- **Choose the tool from the data, not the brief.** The scenario said "similar-ticket search", but each category has only two or three distinct summaries, so a vector index over tickets would find nothing new. Counting tickets per day against a baseline finds the incident.
+- **The baseline is the category's own typical day,** computed from the 90 days before the window. Busiest days come first, the same "evidence first" ordering as `get_invoices`.
+- **Governance shows up in the answer.**
+  - The fix, `kb-vpn-drops-after-update`, has audience `it`, and I'm in no business group. So `search_policies` hid it from me, and the agent fell back to `open_ticket`.
+  - The agent never sees more than the person asking (ADR 0004). The trace showed the search ran and returned only `it-vpn-policy` (audience `all`), so this was not a model mistake.
+- **A new specialist is one table row, one prompt and one tool binding.** The test catches a bound tool that no specialist owns, which would otherwise be silently unreachable.
+
+**Mistakes:**
+- **Bad statement splitter.** Claude's splitter for running the new SQL split on a `;` inside a `--` comment, so the first `CREATE` failed with a parse error. Fixed by removing comment lines before splitting.
+- **Broken "same code" check.** Claude's check that `ruff format` changed only layout compared `hash()` of the parsed code across two Python processes. String hashes are randomized per process, so they always differ. Compared the parsed code directly instead.
+- **Under-citing again.** Service Desk read 30 tickets against 2.2 and had example ticket ids, but cited only the VPN policy. Left for the Phase 6 citation scorer.
+- **Not tested yet:** the IT-only path, where a caller in `it_support` gets the knowledge-base fix.
+
+**Interview questions:**
+1. Your brief says "similar-ticket search", but the tickets have two distinct summaries per category. What do you build instead, and how do you defend it?
+2. Your Service Desk agent said "open a ticket" although a knowledge-base article fixes the issue, and the trace shows the search ran. What happened, and is it a bug?
+3. How do you decide whether a day of tickets is an incident, and what are the weaknesses of a fixed window like "the last 60 days"?

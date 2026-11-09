@@ -53,10 +53,17 @@ def test_specialist_citations_come_from_this_turn_only():
 
 
 def test_each_prompt_names_the_tools_it_owns():
-    # UC function tools belong to the Customer Service agent; the Genie agent and the
-    # customer_service specialist are the supervisor's tools.
+    # Genie tools are the supervisor's. Every UC function tool belongs to at least one specialist
+    # (agent.SPECIALISTS), whose prompt names it; a tool nobody owns would be unreachable.
+    from agent.agent import SPECIALISTS
+
     prompt = {p.stem: p.read_text() for p in PROMPTS.glob("*.md")}
-    assert "customer_service" in prompt["supervisor"]
+    assert all(name in prompt["supervisor"] for name in SPECIALISTS)
     for tool in tomllib.loads((ROOT / "agent.toml").read_text())["tools"]:
-        owner = "supervisor" if tool["source"]["kind"] == "genie_agent" else "customer_service"
-        assert tool["id"] in prompt[owner], (owner, tool["id"])
+        if tool["source"]["kind"] == "genie_agent":
+            assert tool["id"] in prompt["supervisor"], tool["id"]
+            continue
+        owners = [name for name, (ids, _) in SPECIALISTS.items() if tool["id"] in ids]
+        assert owners, f"{tool['id']} belongs to no specialist"
+        for owner in owners:
+            assert tool["id"] in prompt[owner], (owner, tool["id"])

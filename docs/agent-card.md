@@ -16,10 +16,10 @@ Sanad answers billing, delivery, analytics and IT-support questions for Najm Sup
 
 | Agent | Tools | Data | Write actions (approval required) |
 |---|---|---|---|
-| Supervisor | `customer_service` and the Genie agent `ops_analytics` as tools ([ADR 0005](adr/0005-supervisor-calls-specialists-as-tools.md)); mock Teams webhook (Phase 5) | Conversation memory | Post a summary to a Teams channel |
+| Supervisor | `customer_service`, `service_desk` and the Genie agent `ops_analytics` as tools ([ADR 0005](adr/0005-supervisor-calls-specialists-as-tools.md)); mock Teams webhook (Phase 5) | Conversation memory | Post a summary to a Teams channel |
 | Customer Service | UC functions `get_customer_summary`, `get_invoices`, `get_shipment_status`; policy retrieval (`search_policies`) with citations | `gold` ERP and CRM tables; returns and SLA policies | Draft a credit note; open a case. Credit notes above SAR 5,000 need manager approval |
 | Ops Analytics | Genie agent *Sanad Ops Analytics* ([definition](../genie/ops_analytics.geniespace.json), deployed by the bundle) | `gold.delivery_sla_by_region`; the late rate is `SUM(late) / SUM(delivered)` | None (read-only) |
-| Service Desk | Similar-ticket search; KB retrieval; mock ITSM API via MCP | Past tickets; KB articles | Create, update or route a ticket (idempotency key on create) |
+| Service Desk | UC function `get_ticket_trend` (incident check: busiest days against a typical day); KB retrieval (`search_policies`); mock ITSM API via MCP (Phase 5) | Past tickets; KB articles | Create, update or route a ticket (idempotency key on create) |
 
 ## Models
 
@@ -32,7 +32,7 @@ Every answer follows the Pydantic schema in [agent/agent/schema.py](../agent/age
 - `answer`: plain text.
 - `citations`: each a `document` (doc_id), a `record` (invoice, order, shipment or account id), or a `query` (an Ops Analytics answer, cited by the Genie `deep_link` that opens its SQL and rows).
 - `confidence`: `high`, `medium` or `low`. An answer without citations must be `low`.
-- `next_action`: `none`, `draft_credit_note`, `open_case` or `ask_user`.
+- `next_action`: `none`, `draft_credit_note`, `open_case`, `open_ticket` or `ask_user`.
 
 The chat shows `answer`, and the whole object is in the final message's `additional_kwargs["answer"]`. The system prompts are `sanad.prompts.supervisor@production` and `sanad.prompts.customer_service@production` in the MLflow Prompt Registry. Their sources are in [agent/agent/prompts/](../agent/agent/prompts/).
 

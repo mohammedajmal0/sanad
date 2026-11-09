@@ -317,3 +317,37 @@ These were written by Claude at my request; I must be able to defend them: the t
 1. Your agent pauses for approval before writes. What exactly is saved, who may resume it, and what happens if the server restarts in between?
 2. Why does the SAR 5,000 rule live in the tool's code rather than the prompt, and what does the model still control?
 3. Your agent told a user a credit note was "awaiting manager approval" when the tool said "drafted". How did you find the cause, and what stops it happening again?
+
+### 2026-11-09: Memory and session stores (Phase 4 done)
+
+**What we built:**
+- **Two stores,** bound with `agentbricks memory bind sanad-memory` and `agentbricks sessions bind sanad-sessions`, and created by the deploy, which also gave the app access.
+  - The session store keeps each conversation, including a paused approval, across restarts.
+  - The memory store gives the supervisor `remember`, `recall`, `forget` and `list_memories`, per user.
+- **Supervisor prompt, version 5:** memory holds only the user's own preferences and context, never customer, invoice, shipment, ticket or delivery data, nor anything a tool returned. A test guards the rule.
+- **Results on the deployed agent,** with the same actor across three new sessions:
+  - A, "Please remember: I'm the account manager for the Abha region…": stored "Account manager for the Abha region" under the topic `role`.
+  - B, "What do you remember about me?": a new conversation recalled it.
+  - C, "Remember that Al-Faris Trading's duplicate invoice is INV-050001…": refused, since it only keeps the user's own preferences.
+  - The session store listed all three sessions.
+
+**Phase 4 is done.** The supervisor routes to one of three specialists (Customer Service, Ops Analytics, Service Desk), they call UC function tools, every answer is schema-validated, and every write pauses for approval.
+
+These were written by Claude at my request; I must be able to defend them: the store names, and the memory rule with its reason.
+
+**Key concepts:**
+- **Three stores, three jobs:**
+  - the session store holds one conversation, like a meeting's whiteboard;
+  - the memory store holds facts across conversations, like a diary;
+  - the runtime store holds each request's state for recovery, like a job ticket.
+- **Memory is outside Unity Catalog's permissions,** and the actor partitions are not a security boundary: the app can read every user's memories. Tool data copied into memory would escape row filters and masks, for example after a user moves region. So the rule is about governance, not tidiness.
+- **The actor is tied to the signed-in user.** The client sent `actor: "me"`, but the store shows an opaque id. The runtime binds the actor to the authenticated user, so one user can't read another's memories through the API.
+- **Local runs have no stores.** Memory and sessions only work once deployed, or with `AGENT_MEMORY_STORE` and `AGENT_SESSION_STORE` set in `.env`. The deploy is what creates the stores and grants access.
+
+**Mistakes:**
+- **Under-saving.** In A, the agent said "I'll keep answers short" but saved only the role, not the preference, so B couldn't recall it. Saving is the model's choice, just as citing is. Left for Phase 6, with a "remembered what the user asked" check.
+
+**Interview questions:**
+1. What is the difference between a session store, a memory store and a runtime store, and which one makes an approval survive a restart?
+2. Why must an agent never copy tool results into long-term memory, even for the same user who fetched them?
+3. A client sends `actor: "alice"` in the request. Why can't that client read Alice's memories?

@@ -67,3 +67,10 @@ def test_each_prompt_names_the_tools_it_owns():
         assert owners, f"{tool['id']} belongs to no specialist"
         for owner in owners:
             assert tool["id"] in prompt[owner], (owner, tool["id"])
+
+
+def test_supervisor_limits_memory_to_preferences():
+    # The memory store is outside Unity Catalog's row filters and masks: tool data must not go in.
+    prompt = (PROMPTS / "supervisor.md").read_text()
+    assert "remember only for the user's own preferences" in prompt
+    assert "Never remember customer" in prompt

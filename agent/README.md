@@ -9,7 +9,12 @@ The Sanad Customer Service agent: an Agent Bricks project (the CLI is Beta). `ag
 - **Model:** `system.ai.gpt-oss-120b` (`MODEL` in [agent/agent.py](agent/agent.py)), through the AI Gateway. Free Edition offers no Claude model. List what it does offer with `agentbricks -p sanad experimental models list`.
 - **System prompts:** `sanad.prompts.supervisor@production` and `sanad.prompts.customer_service@production` in the MLflow Prompt Registry, bound in `agent.toml`. Edit [agent/prompts/](agent/prompts/)`<name>.md`, then run `DATABRICKS_CONFIG_PROFILE=sanad uv run python -m agent.prompt <name>` to register a new version and move `@production`. It lives in its own schema (`CREATE SCHEMA sanad.prompts`), because deploy grants the app `MANAGE` there.
 - **Answer:** every turn ends with one extra model call, with no tools, that returns the `Answer` schema ([agent/answer.py](agent/answer.py), [agent/schema.py](agent/schema.py)). LangChain's `response_format` doesn't work with gpt-oss behind the gateway: it ignores the forced tool call, and it rejects `response_format` together with tools.
-- **No memory or session store yet.** Both were unbound after `init`, and the memory task later in Phase 4 binds them. Conversation history lives in process memory.
+- **Memory and sessions (2026-11-09):**
+  - The session store `sanad-sessions` keeps each conversation, including a paused approval, across restarts.
+  - The memory store `sanad-memory` keeps facts about the user across conversations.
+  - Both are bound with `agentbricks memory bind` and `sessions bind`, and created by deploy. They are off when the agent runs locally.
+  - The supervisor prompt allows memory only for the user's own preferences and context, never tool data, because the store is outside Unity Catalog's permissions.
+  - Clients send `input.actor`, and the runtime ties it to the signed-in user.
 - **Tracing:** deployed runs trace to the MLflow experiment `/Shared/agentbricks_traces/sanad-cs-bevrqu`.
 - **Deployed** as the Databricks App `agent-bricks-sanad-cs`, with its own service principal. Keep it stopped between uses: `databricks apps start|stop agent-bricks-sanad-cs --profile sanad`.
 - **Supervisor and specialists ([ADR 0005](../docs/adr/0005-supervisor-calls-specialists-as-tools.md)):**
@@ -41,7 +46,7 @@ The Sanad Customer Service agent: an Agent Bricks project (the CLI is Beta). `ag
   - Ops Analytics: the Genie agent *Sanad Ops Analytics* exists since 2026-11-09 ([genie/](../genie/ops_analytics.geniespace.json), checked by [evals/ops_genie.py](../evals/ops_genie.py)). The supervisor task binds it with `agentbricks tools add genie-agent <space id>` and `auth = "user"`;
   - the Service Desk specialist: done on 2026-11-09, with `get_ticket_trend` plus `search_policies`. Each specialist's tools and routing description are in `SPECIALISTS` in [agent/agent.py](agent/agent.py);
   - an approval interrupt before every write;
-  - session and memory stores in `agent.toml`.
+  - session and memory stores in `agent.toml`: done on 2026-11-09.
 - **Phase 5:** the mock systems behind a custom MCP server, with retries and a fallback on failure.
 - **Agent logic stays in plain LangGraph modules, and the serving layer stays thin** ([ADR 0001](../docs/adr/0001-isolate-beta-features.md)). The template already splits it this way: `agent/agent.py:run_agent` uses no Agent Bricks types, and `runtime/` is the thin layer.
 
@@ -55,7 +60,7 @@ Since 2026-11-07, Claude writes these at my request, and each one is logged in t
 ## Done when
 
 - **Gate A:** the agent finds the seeded duplicate invoice, cites the refund policy, and the trace shows every tool call. **Passed on 2026-11-08** with [evals/gate_a.py](../evals/gate_a.py) `--local`, which uses the local server above plus `--setenv=MLFLOW_TRACKING_URI=databricks --setenv=MLFLOW_EXPERIMENT_NAME=/Shared/agentbricks_traces/sanad-cs-bevrqu`. The deployed agent gives the same answer, but **its traces arrive without spans**: the app's MLflow exporter can't reach the cloud storage host (`Failed to send trace to MLflow backend … storage.cloud.databricks.com … Max retries exceeded` in `agentbricks deployments logs`).
-- **Phase 4 (tracker):** the supervisor routes a question to one of three specialists, calls a UC function tool, returns a schema-validated answer, and asks for approval before any write.
+- **Phase 4 (tracker):** the supervisor routes a question to one of three specialists, calls a UC function tool, returns a schema-validated answer, and asks for approval before any write. **Met on 2026-11-09** (learning log, Phase 4).
 
 ## Template notes (Agent Bricks 0.9.0, unchanged)
 

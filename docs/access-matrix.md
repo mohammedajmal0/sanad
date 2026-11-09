@@ -56,5 +56,10 @@ The audit query in [governance/audit.sql](../governance/audit.sql) finds PII tab
 
 ## Not yet covered
 
+- **Memory and sessions (2026-11-09):**
+  - Deploy gives the app's service principal access to the `sanad-memory` and `sanad-sessions` stores. These are Agent Bricks stores, not Unity Catalog objects, so row filters and masks don't apply to them.
+  - The actor partitions inside a store are not a security boundary: the app can read every user's memories.
+  - So the supervisor prompt keeps memory to the user's own preferences and context, never customer, invoice, ticket or delivery data (tested: it refused to store an invoice id and amount).
+  - Drafted by Claude at my request.
 - **The agent's service principal (`agent-bricks-sanad-cs`) has rights only in `sanad.prompts`.** `agentbricks deploy` gives it `USE CATALOG` on `sanad`, plus `USE SCHEMA`, `EXECUTE`, `CREATE FUNCTION` and `MANAGE` on `sanad.prompts`, so it can load the system prompt. That is why prompts get their own schema: `MANAGE` on `sanad.ai` would let the agent change grants on the index and the tools. All tools, including policy search, run as the signed-in user, so it has nothing in `sanad.ai`. It was used once as a test identity on 2026-11-08, and its test grants were revoked; a leftover `CAN USE` on the warehouse gives it no data.
 - Warehouse access (`CAN USE` on the SQL warehouse) is a workspace permission, not a UC grant. It is set in Phase 7 together with the app.

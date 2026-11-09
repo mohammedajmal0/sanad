@@ -36,3 +36,9 @@ source = {kind = "uc_function", function = "sanad.ai.get_ticket_trend"}
 customer_service = "sanad.prompts.customer_service"
 supervisor = "sanad.prompts.supervisor"
 service_desk = "sanad.prompts.service_desk"
+
+[memory_store]
+name = "sanad-memory"
+
+[session_store]
+name = "sanad-sessions"

@@ -34,13 +34,16 @@ def _call(method: str, path: str, body: dict | None = None) -> dict | list:
     # ponytail: one key per tool call; derive it from the agent's tool_call_id to also cover a
     # whole tool call being replayed after a crash
     headers = {"Idempotency-Key": uuid.uuid4().hex} if method == "POST" else {}
+    reached = False  # did any attempt possibly arrive? A refused connection never sent anything.
     with httpx.Client(base_url=API, timeout=TIMEOUT_S, transport=transport) as client:
         for attempt in range(ATTEMPTS):
             try:
                 response = client.request(method, path, json=body, headers=headers)
             except httpx.TransportError as error:  # timeout, refused, reset
                 failure = type(error).__name__
+                reached |= not isinstance(error, httpx.ConnectError | httpx.ConnectTimeout)
             else:
+                reached = True
                 if response.status_code < 400:
                     return response.json()
                 if response.status_code < 500:  # the request is wrong: repeating it won't help
@@ -49,8 +52,13 @@ def _call(method: str, path: str, body: dict | None = None) -> dict | list:
             if attempt + 1 < ATTEMPTS:
                 time.sleep(BACKOFF_S * 2**attempt)
     system = path.split("/")[1].upper()
-    unsure = " It may still have been saved, so do not try again; tell the user." if headers else ""
-    raise Unavailable(f"The {system} is unavailable ({failure} after {ATTEMPTS} attempts).{unsure}")
+    outcome = ""
+    if headers:  # a create: say exactly what we know about whether it was saved
+        outcome = (" It may still have been saved, so do not try again; tell the user." if reached
+                   else " The request never reached it, so nothing was saved.")  # fmt: skip
+    raise Unavailable(
+        f"The {system} is unavailable ({failure} after {ATTEMPTS} attempts).{outcome}"
+    )
 
 
 @mcp.tool()

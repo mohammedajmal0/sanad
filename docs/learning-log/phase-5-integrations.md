@@ -95,3 +95,35 @@ These were written by Claude at my request; I must be able to defend them: defau
 1. Your MCP server adds a new tool next month. How do you make sure the agent can't call it without approval, before anyone reviews it?
 2. Why must a Databricks token never reach a non-Databricks MCP server, and how does the agent avoid it?
 3. A write's arguments contain a detail no tool returned. Where can you catch it, and which layer should?
+
+### 2026-11-09: Fallback when a system is down (Phase 5 gate)
+
+**What we built:**
+- **The adapter now says exactly what it knows** ([mcp_server.py](../../mock_systems/mcp_server.py)):
+  - when every attempt was a refused connection, the request never left, so the message is "nothing was saved";
+  - a timeout or 5xx after connecting means it may have arrived, so the message is "may still have been saved, do not try again".
+- **Supervisor prompt, version 8:** pass that on in the tool's own words, and never add "nothing was done" unless the tool says so.
+- **Runbook:** the "Tool timeouts" section is filled in (symptoms, checks, fixes, and never re-sending a failed write blindly).
+- **Tests:** 6 in [tests/test_mcp_server.py](../../tests/test_mcp_server.py), including the timeout case.
+- **Results on the local agent:**
+  - **(a) Mock API stopped, MCP server up.** The credit note was approved, and the tool returned "The ERP is unavailable (ConnectError after 3 attempts). The request never reached it, so nothing was saved." The answer said the ERP was unavailable, with HTTP 200 and no second attempt at the write. A read gave the same kind of answer.
+  - **(b) MCP server stopped too.** The log said "Failed to fetch optional MCP tools from server 'najm_systems'; continuing without it." The agent answered in 21 s, with no tool calls, that the ERP can't be reached and a person must draft the credit note.
+
+**The Phase 5 gate is met:** stopping the mock API produces a graceful answer instead of a crash.
+
+These were written by Claude at my request; I must be able to defend them: telling "never sent" apart from "maybe saved", the new supervisor wording, and the runbook section.
+
+**Key concepts:**
+- **Two places to fail, two fallbacks:**
+  - The server is down when a turn starts: discovery is optional, so the agent runs without those tools and says so.
+  - The server is up but the system behind it is down: the tool returns an error message, and the model explains it.
+- **Only code knows whether a write might have happened.** A refused connection sent nothing; a timeout may have delivered the request. The model can't tell them apart, so the adapter states which one happened.
+- **Graceful means honest.** The first version's answer said "no action was taken" while the tool said "may still have been saved". Being polite isn't enough; the claim has to match what's known.
+
+**Mistakes:**
+- **A dishonest "no action was taken".** The first fallback answer said it although the tool said the credit note "may still have been saved". That was true for a refused connection only by luck. Fixed in the adapter, which states exactly what it knows, and in the prompt, which passes it on.
+
+**Interview questions:**
+1. Your agent's integration is down. What should the user see, and what must the agent never do next?
+2. How can an integration know whether a failed create might still have been saved, and why shouldn't the model decide that?
+3. Tools are discovered every turn. What does that buy you during an outage, and what does it cost?

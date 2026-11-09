@@ -41,12 +41,19 @@ def test_a_bad_request_is_not_retried(api):
     assert len(keys) == 1
 
 
-def test_unavailable_after_every_attempt(api):
+def test_refused_connections_mean_nothing_was_saved(api):
     down = httpx.ConnectError("refused")
     keys = api(down, down, down)
-    with pytest.raises(mcp_server.Unavailable, match="ERP is unavailable.*do not try again"):
+    with pytest.raises(mcp_server.Unavailable, match="ERP is unavailable.*nothing was saved"):
         mcp_server.create_credit_note("INV-050001", 1440.71, "duplicate")
     assert len(keys) == 3
+
+
+def test_a_timeout_after_connecting_may_have_saved_it(api):
+    slow = httpx.ReadTimeout("no reply")
+    api(slow, httpx.ConnectError("refused"), httpx.ConnectError("refused"))
+    with pytest.raises(mcp_server.Unavailable, match="may still have been saved"):
+        mcp_server.create_ticket("VPN", "VPN drops")
 
 
 def test_reads_send_no_key(api):

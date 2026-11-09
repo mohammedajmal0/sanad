@@ -1,0 +1,6 @@
+# Local dev for Phase 5: the mock enterprise API (and, next, the MCP server in front of it).
+#   docker compose -f mock_systems/compose.yaml up --build -d
+services:
+  mock-api:
+    build: .
+    ports: ["8100:8000"]

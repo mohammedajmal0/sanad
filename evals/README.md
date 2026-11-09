@@ -14,7 +14,7 @@ MLflow 3 evaluation datasets, scorers, the red-team set and `run_eval.py`.
 
 ## Evaluation harness (Phase 6)
 
-- **[cases.py](cases.py): 34 cases** (19 normal, 6 multi-step, 9 red team).
+- **[cases.py](cases.py): 33 cases** (19 normal, 5 multi-step, 9 red team).
   - Each case says what a good answer must contain, cite or avoid: expected facts, citations, tools that must or mustn't run, the write it must pause on, and rules for the guidelines judge.
   - Expectations come from the seeded data and the policy text.
 - **[checks.py](checks.py): code checks,** exact and repeatable, tested in [tests/test_eval_checks.py](../tests/test_eval_checks.py). They cover:

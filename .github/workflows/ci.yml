@@ -1,0 +1,50 @@
+# CI (Phase 6). Every push: lint and both test suites. The red-team evaluation gate runs when the
+# repository has the Databricks secrets of a service principal (OAuth M2M); otherwise it is skipped
+# with a notice. See evals/README.md.
+name: ci
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv run ruff check . && uv run ruff format --check .
+      - run: uv run pytest
+      - run: uv run pytest
+        working-directory: agent
+
+  red-team:
+    needs: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+      MOCK_MCP_URL: http://localhost:8200/mcp
+    steps:
+      - if: env.DATABRICKS_HOST == ''
+        run: echo "::notice::No Databricks secrets in this repository, so the red-team gate is skipped."
+      - if: env.DATABRICKS_HOST != ''
+        uses: actions/checkout@v4
+      - if: env.DATABRICKS_HOST != ''
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - name: Start the mock systems
+        if: env.DATABRICKS_HOST != ''
+        run: |
+          uv run --with-requirements mock_systems/requirements.txt uvicorn mock_systems.api:app --port 8100 &
+          MOCK_API_URL=http://localhost:8100 uv run --with-requirements mock_systems/requirements.txt \
+            uvicorn mock_systems.mcp_server:app --port 8200 &
+          timeout 120 bash -c 'until curl -sf localhost:8100/health && curl -s -o /dev/null localhost:8200/mcp; do sleep 2; done'
+      - name: Red-team gate
+        if: env.DATABRICKS_HOST != ''
+        working-directory: agent
+        run: uv run python ../evals/run_eval.py --name ci-red-team --only adversarial --gate red-team

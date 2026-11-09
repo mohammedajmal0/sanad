@@ -21,7 +21,15 @@ A FastAPI mock of Najm's CRM, ERP, ITSM and a Teams channel. It runs locally in 
 - **Run:**
   - with Docker: `docker compose -f mock_systems/compose.yaml up --build -d`, served on port 8100;
   - without Docker: `uv run --with-requirements mock_systems/requirements.txt uvicorn mock_systems.api:app --port 8100`.
-- **Next:** the MCP server in front of this API (`p5-mcp-server`).
+- **[mcp_server.py](mcp_server.py) (p5-mcp-server, 2026-11-09):** the agent's seven tools over this API: `create_credit_note`, `get_credit_note`, `create_ticket`, `get_ticket`, `create_case`, `get_case` and `post_teams_message`.
+  - Each call has a 5 s timeout and up to 3 attempts. Only timeouts, dropped connections and 5xx are retried, never 4xx.
+  - Each create sends **one** `Idempotency-Key` on every attempt.
+  - When every attempt fails, it says the system is unavailable and, for a create, not to try again.
+  - The MCP endpoint is `/mcp` (streamable HTTP), served on port 8200, and it calls the API at `MOCK_API_URL`.
+  - Tests: [tests/test_mcp_server.py](../tests/test_mcp_server.py).
+- **Run both:**
+  - with Docker: `docker compose -f mock_systems/compose.yaml up --build -d`;
+  - without Docker: run the API command above, then `MOCK_API_URL=http://localhost:8100 uv run --with-requirements mock_systems/requirements.txt uvicorn mock_systems.mcp_server:app --port 8200`.
 
 ## You write
 

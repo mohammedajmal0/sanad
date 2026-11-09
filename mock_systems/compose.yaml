@@ -4,3 +4,9 @@ services:
   mock-api:
     build: .
     ports: ["8100:8000"]
+  mcp-server:
+    build: .
+    command: ["uvicorn", "mcp_server:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment: {MOCK_API_URL: "http://mock-api:8000"}
+    ports: ["8200:8000"]
+    depends_on: [mock-api]

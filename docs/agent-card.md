@@ -18,7 +18,7 @@ Sanad answers billing, delivery, analytics and IT-support questions for Najm Sup
 |---|---|---|---|
 | Supervisor | Routing; mock Teams webhook | Conversation memory | Post a summary to a Teams channel |
 | Customer Service | UC functions `get_customer_summary`, `get_invoices`, `get_shipment_status`; policy retrieval with citations | `gold` ERP and CRM tables; returns and SLA policies | Draft a credit note; open a case. Credit notes above SAR 5,000 need manager approval |
-| Ops Analytics | Genie agent over gold tables | `gold` tables; metric definitions | None (read-only) |
+| Ops Analytics | Genie agent *Sanad Ops Analytics* ([definition](../genie/ops_analytics.geniespace.json), deployed by the bundle) | `gold.delivery_sla_by_region`; the late rate is `SUM(late) / SUM(delivered)` | None (read-only) |
 | Service Desk | Similar-ticket search; KB retrieval; mock ITSM API via MCP | Past tickets; KB articles | Create, update or route a ticket (idempotency key on create) |
 
 ## Models

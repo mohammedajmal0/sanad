@@ -159,3 +159,36 @@ The schema fields and rule, the prompt's rules and the formatting instructions w
 1. How do you prove an agent used its tools rather than its memory, and what would you check automatically?
 2. Your deployed agent's traces have metadata but no spans. Where would you look, and what does it tell you about the platform?
 3. One model call in a turn reports 10 times the tokens of the rest. How do you find out why, and how would you catch it before it reaches the bill?
+
+### 2026-11-09: Ops Analytics as a Genie agent on gold
+
+**What we built:** the Genie agent *Sanad Ops Analytics* over `gold.delivery_sla_by_region`.
+- **Definition and deploy:** the space is defined in [genie/ops_analytics.geniespace.json](../../genie/ops_analytics.geniespace.json). The bundle deploys it (`genie_spaces` in [databricks.yml](../../databricks.yml)) with `CAN_RUN` for `ops_managers`.
+- **Check:** [evals/ops_genie.py](../../evals/ops_genie.py) asks "Which region had the most late deliveries last quarter, and why?". It passes when the answer names Jeddah and Red Sea Cargo and the SQL doesn't average `late_rate`. The rule is tested in [tests/test_ops_genie.py](../../tests/test_ops_genie.py).
+- **Result:** passed twice on 2026-11-09. One query found Jeddah (414 of 2,559 late, 16.2%) and Red Sea Cargo (381 of 642, 59.3%).
+- **Not yet bound to the agent:** the supervisor task does that.
+
+These were written by Claude at my request; I must be able to defend them: the table choice, the column descriptions and synonyms, the three example SQLs, the two text-instruction sections, reading "last quarter" as the last complete calendar quarter, the `ops_managers`-only permission, and the check's facts.
+
+**Key concepts:**
+- **A Genie agent is a curated space.** It writes SQL from the question plus what we give it. In order of trust: the tables, column descriptions, example SQL, and text instructions as a last resort. Genie One searches everything, with no curation.
+- **Non-additive measures:**
+  - `late_rate` is per region × carrier × month, so a group's rate is `SUM(late) / SUM(delivered)`.
+  - `AVG(late_rate)` gives a 10-delivery row the same weight as a 600-delivery row.
+  - On this data the two agree to one decimal place, because the rows are similar in size. So the check reads the SQL, not just the number.
+- **Examples teach a query shape, and the eval question stays unseen.** The example SQLs use other regions and periods, and the check asks the pitch question. Otherwise a pass would only prove Genie remembers its examples.
+- **Chat-mode Genie writes one query per question.** A "why" needs the drill-down inside that query: a CTE finds the top region, then breaks it down by carrier.
+- **When a text instruction is the right tool:** an example with a "why" question didn't change Genie's behavior, and one `DISAMBIGUATION` rule did. Text instructions are for rules that span questions and that no column or example can carry.
+- **Genie spaces are bundle resources** in CLI v1.23: `genie_spaces`, with `file_path` pointing to a `.geniespace.json`. The Genie skill still described an export/import script. `bundle plan` showed 2 to add and 5 unchanged before the first deploy.
+- **The serialized space is strict.** Every list item needs a 32-hex `id`, lists are sorted by `id`, and text fields are arrays of strings.
+- **Development mode renames resources.** The space is titled "[dev ajmal] Sanad Ops Analytics", so the check matches the end of the title.
+
+**Mistakes:**
+- **The "why" failed twice.** The first run named Jeddah with the right formula but said the data showed no reason. Adding a "why" example SQL gave the same result. Adding the `DISAMBIGUATION` rule made it pass, and a repeat run passed too.
+- **The summary rule isn't always followed.** One passing answer said "the last quarter covered by the query" instead of the month range. The check doesn't test this.
+- **A badly built check question.** Claude's AVG-trap example used two Jeddah rows of equal size, so AVG and SUM/SUM agreed and the trap didn't show. It was redone with rows of unequal size.
+
+**Interview questions:**
+1. A Genie agent picks the right region but averages a rate column. Where do you fix it: the table, the space or the instructions? In what order, and why?
+2. How do you evaluate a natural-language-to-SQL agent so that a pass doesn't just prove it memorized your examples?
+3. Genie runs as the person asking. What does `CAN_RUN` on the space grant, and what still decides which rows they see?

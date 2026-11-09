@@ -35,7 +35,8 @@ The Sanad Customer Service agent: an Agent Bricks project (the CLI is Beta). `ag
 - **Phase 4:** the Customer Service agent; UC function tools (`get_customer_summary`, `get_invoices`, `get_shipment_status`); a retrieval tool that returns citations; a system prompt in the MLflow prompt registry; and a Pydantic answer schema (`answer`, `citations`, `confidence`, `next_action`).
 - **Phase 4, after Gate A:**
   - a supervisor graph;
-  - Ops Analytics (Genie agent) and Service Desk specialists;
+  - Ops Analytics: the Genie agent *Sanad Ops Analytics* exists since 2026-11-09 ([genie/](../genie/ops_analytics.geniespace.json), checked by [evals/ops_genie.py](../evals/ops_genie.py)). The supervisor task binds it with `agentbricks tools add genie-agent <space id>` and `auth = "user"`;
+  - the Service Desk specialist;
   - an approval interrupt before every write;
   - session and memory stores in `agent.toml`.
 - **Phase 5:** the mock systems behind a custom MCP server, with retries and a fallback on failure.

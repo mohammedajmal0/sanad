@@ -8,7 +8,7 @@ bundle:
 
 variables:
   warehouse_id:
-    description: SQL warehouse that runs the dashboard's queries
+    description: SQL warehouse that runs the dashboard's and the Genie agent's queries
     lookup:
       warehouse: Serverless Starter Warehouse # found by name at deploy time, so no ID in git
 
@@ -21,6 +21,15 @@ resources:
       dataset_catalog: sanad # dataset queries use bare names (FROM invoice_issues);
       dataset_schema: gold   # these two fill in the catalog and schema
 
+  genie_spaces:
+    sanad_ops_analytics: # the Ops Analytics specialist (Phase 4); queries run as the asking user
+      title: Sanad Ops Analytics
+      description: "Delivery questions for Najm ops managers: late deliveries by region, carrier and month."
+      file_path: genie/ops_analytics.geniespace.json
+      warehouse_id: ${var.warehouse_id}
+      permissions:
+        - level: CAN_RUN
+          group_name: ops_managers
 
   pipelines:
     sanad_medallion:

@@ -74,3 +74,23 @@ def test_supervisor_limits_memory_to_preferences():
     prompt = (PROMPTS / "supervisor.md").read_text()
     assert "remember only for the user's own preferences" in prompt
     assert "Never remember customer" in prompt
+
+
+def test_named_records_are_cited_only_if_a_tool_returned_them():
+    from agent.answer import mentioned_records
+
+    invoices = ToolMessage('{"rows": [["INV-027711"], ["INV-050001"]]}', tool_call_id="i")
+    invoices.name = "get_invoices"
+    messages = [HumanMessage("Was Al-Faris billed twice?"), invoices]
+    text = "INV‑050001 duplicates INV-027711; INV-999999 was never returned."
+    cited = mentioned_records(text, messages)
+    assert [(c.ref, c.title) for c in cited] == [
+        ("INV-050001", "get_invoices"),
+        ("INV-027711", "get_invoices"),
+    ]
+
+
+def test_ids_in_prose_get_a_plain_hyphen():
+    from agent.answer import RECORD_ID
+
+    assert RECORD_ID.sub(r"\1-\2", "Credit INV‑050001.") == "Credit INV-050001."

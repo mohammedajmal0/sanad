@@ -351,3 +351,22 @@ These were written by Claude at my request; I must be able to defend them: the s
 1. What is the difference between a session store, a memory store and a runtime store, and which one makes an approval survive a restart?
 2. Why must an agent never copy tool results into long-term memory, even for the same user who fetched them?
 3. A client sends `actor: "alice"` in the request. Why can't that client read Alice's memories?
+
+### 2026-11-09: Closing Phase 4's open items
+
+**What we built:**
+- **Every record the answer names is cited by code.** [agent/agent/answer.py](../../agent/agent/answer.py) cites each record id the answer mentions, if a tool returned it this turn, under that tool's name. An id no tool returned is never cited, because it may be invented. Gate A passed 2 of 2, and now also cites the order and account it names.
+- **Ids in the prose are made copyable.** The model sometimes writes ids with a non-breaking hyphen (U+2011): `INV‑050001` looks right, but searching the ERP for it finds nothing. The same step replaces it with a plain hyphen.
+- **Supervisor prompt, version 6:** call `remember` once for each separate fact. It's checked at the next deploy, in Phase 5.
+- **The IT-only path is still untested.** Adding me to `it_support` was blocked as a permission grant, so I run the two commands myself (add, test, remove).
+
+These were written by Claude at my request; I must be able to defend them: citing named records in code, the id pattern and the hyphen rule, and "one remember per fact".
+
+**Key concepts:**
+- **Code carries provenance, and the model writes prose.** This is the third time the same fix applied: the specialists' citations, records named in the answer, and write statuses read from the tool result.
+- **Invisible characters are real bugs.** A non-breaking hyphen survives every eyeball check and still fails a search.
+
+**Interview questions:**
+1. Your agent's answer names an invoice id that no tool returned. What should happen to the citation, and what does that tell you?
+2. Why normalize ids in the agent's prose instead of asking the model to use plain hyphens?
+3. Which facts in an agent's answer would you carry over in code, and which do you leave to the model?

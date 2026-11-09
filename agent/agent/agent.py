@@ -35,6 +35,7 @@ from agent.prompt import SUPERVISOR, load_system_prompt
 
 # Importing the tools package auto-registers every tool module.
 from agent.tools import all_tools
+from agent.tools.actions import MANAGER_LIMIT_SAR
 
 # A Unity Catalog AI Gateway model service, served from the `system.ai` schema and queried through
 # the gateway (see `use_ai_gateway=True` below). Swap for any `system.ai.*` model service your
@@ -46,11 +47,28 @@ MODEL = (
     resolve_model_service() or "system.ai.gpt-oss-120b"
 )  # Free Edition has no Claude (checked 2026-11-08)
 
-# Tools that require human approval before they run. Map a tool name to True to allow every decision
-# (approve / edit / reject / respond), or to a config dict to restrict them (see HumanInTheLoopMiddleware).
-# When a listed tool is about to run, the agent pauses and emits an `interrupt` event; the client
-# resumes by sending `resume` with the same session id. Empty this dict to disable approval gating.
-REQUIRE_APPROVAL = {"send_message": True}
+
+def _approval_request(tool_call: Any, state: Any, runtime: Any) -> str:
+    """What the approver reads before a write runs (written by Claude at my request)."""
+    a = tool_call["args"]
+    if tool_call["name"] == "draft_credit_note":
+        text = f"Draft a credit note of SAR {a.get('amount_sar')} for {a.get('invoice_id')}? "
+        try:  # raw model arguments: don't let a bad amount break the approval request
+            big = float(a.get("amount_sar", 0)) > MANAGER_LIMIT_SAR
+        except (TypeError, ValueError):
+            big = False
+        manager = " Above SAR 5,000, so a manager must approve it next." if big else ""
+        return f"{text}Reason: {a.get('reason')}{manager}"
+    return f"Open a {a.get('category')} ticket: {a.get('summary')}"
+
+
+# Every write pauses for a person before it runs (agent/tools/actions.py). The agent emits an
+# `interrupt`; the client resumes with `input.resume` and the same session id. "respond" is left
+# out: the approver approves, edits the arguments, or rejects.
+REQUIRE_APPROVAL = {
+    name: {"allowed_decisions": ["approve", "edit", "reject"], "description": _approval_request}
+    for name in ("draft_credit_note", "open_ticket")
+}
 
 # The specialists the supervisor calls as tools (docs/adr/0005): the UC function tools each one
 # gets (agent.toml ids; search_policies is shared) and the description the supervisor reads to

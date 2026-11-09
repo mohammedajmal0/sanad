@@ -17,9 +17,9 @@ Sanad answers billing, delivery, analytics and IT-support questions for Najm Sup
 | Agent | Tools | Data | Write actions (approval required) |
 |---|---|---|---|
 | Supervisor | `customer_service`, `service_desk` and the Genie agent `ops_analytics` as tools ([ADR 0005](adr/0005-supervisor-calls-specialists-as-tools.md)); mock Teams webhook (Phase 5) | Conversation memory | Post a summary to a Teams channel |
-| Customer Service | UC functions `get_customer_summary`, `get_invoices`, `get_shipment_status`; policy retrieval (`search_policies`) with citations | `gold` ERP and CRM tables; returns and SLA policies | Draft a credit note; open a case. Credit notes above SAR 5,000 need manager approval |
+| Customer Service | UC functions `get_customer_summary`, `get_invoices`, `get_shipment_status`; policy retrieval (`search_policies`) with citations | `gold` ERP and CRM tables; returns and SLA policies | Draft a credit note (`draft_credit_note`, which pauses for approval; above SAR 5,000 it then waits for a manager); open a case (later) |
 | Ops Analytics | Genie agent *Sanad Ops Analytics* ([definition](../genie/ops_analytics.geniespace.json), deployed by the bundle) | `gold.delivery_sla_by_region`; the late rate is `SUM(late) / SUM(delivered)` | None (read-only) |
-| Service Desk | UC function `get_ticket_trend` (incident check: busiest days against a typical day); KB retrieval (`search_policies`); mock ITSM API via MCP (Phase 5) | Past tickets; KB articles | Create, update or route a ticket (idempotency key on create) |
+| Service Desk | UC function `get_ticket_trend` (incident check: busiest days against a typical day); KB retrieval (`search_policies`); mock ITSM API via MCP (Phase 5) | Past tickets; KB articles | Open a ticket (`open_ticket`, which pauses for approval); update or route one, and an idempotency key on create (Phase 5) |
 
 ## Models
 

@@ -15,7 +15,7 @@ The Sanad Customer Service agent: an Agent Bricks project (the CLI is Beta). `ag
 - **Supervisor and specialists ([ADR 0005](../docs/adr/0005-supervisor-calls-specialists-as-tools.md)):**
   - The supervisor calls `customer_service`, the Customer Service sub-agent wrapped as a tool, and the Genie agent `ops_analytics` (`ops_analytics_ask`, `_poll`, `_query_result`).
   - The Genie agent was bound with `agentbricks tools add genie-agent <space id> --name ops_analytics --auth user`.
-- **Tools:** four UC functions bound in `agent.toml` with `auth = "user"` belong to the Customer Service sub-agent: `get_customer_summary`, `get_invoices`, `get_shipment_status` and `search_policies` ([tools/](../tools/), [ADR 0004](../docs/adr/0004-run-tools-as-the-asking-user.md)). They need the workspace's managed MCP servers preview, and the app's `mcp.functions` user scope, which `agentbricks deploy --allow-user-scope-update` adds. The template's `get_current_time` and approval-gated `send_message` stay until the approval task.
+- **Tools:** four UC functions bound in `agent.toml` with `auth = "user"` belong to the Customer Service sub-agent: `get_customer_summary`, `get_invoices`, `get_shipment_status` and `search_policies` ([tools/](../tools/), [ADR 0004](../docs/adr/0004-run-tools-as-the-asking-user.md)). They need the workspace's managed MCP servers preview, and the app's `mcp.functions` user scope, which `agentbricks deploy --allow-user-scope-update` adds. - **Writes:** `draft_credit_note` and `open_ticket` ([agent/tools/actions.py](agent/tools/actions.py)) pause for approval before they run (`REQUIRE_APPROVAL` in [agent/agent.py](agent/agent.py)). Credit notes above SAR 5,000 then wait for a manager. Until Phase 5 they are stand-ins that check the request and store nothing. The template's `get_current_time` and `send_message` were removed.
 
 ## Run
 
@@ -160,8 +160,8 @@ A message's `content` is its answer text. Models that reason (Claude 5.x) add a 
 
 ### Human approval
 
-`send_message` is gated by `HumanInTheLoopMiddleware`. Start a turn asking the agent to use that
-tool. When the output or event stream contains an `interrupt`, submit a new invocation with the same
+`draft_credit_note` and `open_ticket` are gated by `HumanInTheLoopMiddleware`. Start a turn asking
+for a credit note or a ticket. When the output or event stream contains an `interrupt`, submit a new invocation with the same
 application session:
 
 ```json

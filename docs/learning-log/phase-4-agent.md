@@ -278,3 +278,42 @@ These were written by Claude at my request; I must be able to defend them: the f
 1. Your brief says "similar-ticket search", but the tickets have two distinct summaries per category. What do you build instead, and how do you defend it?
 2. Your Service Desk agent said "open a ticket" although a knowledge-base article fixes the issue, and the trace shows the search ran. What happened, and is it a bug?
 3. How do you decide whether a day of tickets is an incident, and what are the weaknesses of a fixed window like "the last 60 days"?
+
+### 2026-11-09: Approval before every write
+
+**What we built:**
+- **Two write tools** in [agent/agent/tools/actions.py](../../agent/agent/tools/actions.py): `draft_credit_note(invoice_id, amount_sar, reason)` and `open_ticket(category, summary)`.
+  - They check their arguments: an id like `INV-050001`, a positive amount, a known category.
+  - They apply the business rule: above SAR 5,000, a credit note waits for a manager (`waiting_for_manager`).
+  - They are Phase 4 stand-ins that store nothing. Phase 5 replaces their bodies with the mock ERP and ITSM through MCP.
+- **The approval gate:** `REQUIRE_APPROVAL` in [agent/agent/agent.py](../../agent/agent/agent.py) pauses both tools, with approve, edit or reject. `_approval_request` writes what the approver reads, and mentions a manager only above SAR 5,000.
+- **Supervisor prompt, version 4:** a rule for writes. The template's `get_current_time` and `send_message` are gone.
+- **Tests:**
+  - every local tool is a gated write;
+  - the SAR 5,000 boundary: 5,000 is drafted, 5,000.01 waits for a manager;
+  - bad ids and amounts are rejected;
+  - the approval text mentions a manager only above the limit.
+- **Result on the local agent:** "…Please draft a credit note for the duplicate invoice."
+  - The turn paused: "Draft a credit note of SAR 1440.71 for INV-050001? Reason: …".
+  - On approve, the tool returned `drafted` and the answer said so.
+  - In one run the supervisor first asked which invoice to credit. Both invoices are flagged as duplicates, and the policy says to confirm which one the customer received first. It paused for approval after my answer.
+
+These were written by Claude at my request; I must be able to defend them: the two tools, their checks and descriptions, reading "above SAR 5,000" as more than 5,000, approve/edit/reject without "respond", the approval text, and the write rule in the supervisor prompt.
+
+**Key concepts:**
+- **An interrupt is a saved pause.** The checkpointer stores the pending tool call, and a new request with `input.resume` and the same session continues from it. So approvals need session state, and must be resumed by the same user (ADR 0004).
+- **Business rules belong in the tool's code.** The model fills the arguments, so the tool checks them; that's the trust boundary. The prompt only decides when to ask for a write.
+- **Two levels of approval:**
+  - the person asking approves the call;
+  - the tool then sends anything above SAR 5,000 to a manager.
+- **Listing outcomes in a prompt invites the model to pick one.** The write rule listed `waiting_for_manager` among the statuses, and the model said "awaiting manager approval" about a credit note the tool had drafted. The rule now says to report the status exactly as the tool result gives it.
+- **The response stream carries the tool's own result,** so the chat can show the real write status from it rather than from the prose (Phase 7).
+
+**Mistakes:**
+- **Misleading approval text.** Claude's approval text said "Above SAR 5,000 a manager must approve it next" for every credit note, including SAR 1,440.71. It now says so only above the limit, and a test covers it.
+- **A false status in the answer.** Claude's write rule listed the possible statuses, and the answer then claimed "awaiting manager approval" for a drafted note. Searching the trace for "manager" showed the only source in that turn was the prompt itself.
+
+**Interview questions:**
+1. Your agent pauses for approval before writes. What exactly is saved, who may resume it, and what happens if the server restarts in between?
+2. Why does the SAR 5,000 rule live in the tool's code rather than the prompt, and what does the model still control?
+3. Your agent told a user a credit note was "awaiting manager approval" when the tool said "drafted". How did you find the cause, and what stops it happening again?

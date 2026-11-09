@@ -24,15 +24,28 @@ def test_tools_autoregister():
     tools = all_tools()
     assert tools, "expected the sample tool to auto-register"
     assert all(isinstance(t, BaseTool) for t in tools)
-    assert {"get_current_time", "send_message"} <= {t.name for t in tools}
+    assert {"draft_credit_note", "open_ticket"} <= {t.name for t in tools}
 
 
-def test_gated_tool_is_in_require_approval():
-    # The gated demo tool must exist and be listed for approval, or the HITL demo does nothing.
+def test_every_local_tool_is_a_gated_write():
+    # Local tools are Sanad's writes; each must pause for approval (reads are UC functions).
     from agent.agent import REQUIRE_APPROVAL
 
-    assert REQUIRE_APPROVAL.get("send_message")
-    assert "send_message" in {t.name for t in all_tools()}
+    assert set(REQUIRE_APPROVAL) == {t.name for t in all_tools()}
+
+
+def test_credit_notes_above_the_limit_wait_for_a_manager():
+    from agent.tools.actions import draft_credit_note
+
+    def status(invoice_id, amount):
+        args = {"invoice_id": invoice_id, "amount_sar": amount, "reason": "duplicate"}
+        return draft_credit_note.invoke(args)["status"]
+
+    assert status("INV-050001", 1440.71) == "drafted"
+    assert status("INV-050001", 5000) == "drafted"  # "above SAR 5,000" means more than 5,000
+    assert status("INV-050001", 5000.01) == "waiting_for_manager"
+    assert status("050001", 10) == "rejected"
+    assert status("INV-050001", -1) == "rejected"
 
 
 class _FakeInterrupt:
@@ -47,7 +60,7 @@ async def _aiter(events):
 
 @pytest.mark.asyncio
 async def test_serialize_events_relays_interrupt_as_native_event():
-    hitl = {"action_requests": [{"name": "send_message", "args": {"recipient": "x", "body": "y"}}]}
+    hitl = {"action_requests": [{"name": "draft_credit_note", "args": {"invoice_id": "x"}}]}
     stream = _aiter([("updates", {"__interrupt__": (_FakeInterrupt(hitl, "int-1"),)})])
     events = [e async for e in _serialize_events(stream)]
     assert events == [{"type": "interrupt", "id": "int-1", "value": hitl}]
@@ -226,3 +239,18 @@ async def test_agent_responds_end_to_end():
         )
     ]
     assert events
+
+
+def test_approval_text_mentions_a_manager_only_above_the_limit():
+    from agent.agent import _approval_request
+
+    def text(amount):
+        call = {
+            "name": "draft_credit_note",
+            "args": {"invoice_id": "INV-050001", "amount_sar": amount},
+        }
+        return _approval_request(call, None, None)
+
+    assert "manager" not in text(1440.71)
+    assert "manager" in text(6000)
+    assert "manager" not in text("not a number")  # raw model arguments must not crash it

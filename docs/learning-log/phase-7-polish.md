@@ -138,3 +138,13 @@ These were written by Claude at my request; I must be able to defend them: the t
 1. Your primary model's provider has an outage. What happens to your agent, and where is that decided?
 2. How did you size the rate limits, and what does a user see when one is hit?
 3. Why log model calls at the gateway rather than in the app?
+
+### 2026-11-10: Deploy from GitHub Actions (wired, skipped without credentials)
+
+**What we built:** a `deploy` job in [.github/workflows/ci.yml](../../.github/workflows/ci.yml). It runs on `main` after `tests` and the red-team gate: `databricks bundle validate && databricks bundle deploy`, then `agentbricks deploy sanad-cs`. Like the red-team job, it prints a notice and skips while the repository has no Databricks credentials (Phase 6 decision: CI stays as is).
+
+**Open before switching it on:** pin `databricks/setup-cli` to a release tag or commit SHA, because this job will hold deploy credentials.
+
+**Key concept:** **deploy is gated by evaluation.** `needs: [tests, red-team]` means a prompt or code change that breaks a safety behaviour can't reach production from `main`.
+
+**Interview question:** what stops a bad prompt change from being deployed automatically in your pipeline?

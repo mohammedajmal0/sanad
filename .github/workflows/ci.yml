@@ -48,3 +48,35 @@ jobs:
         if: env.DATABRICKS_HOST != ''
         working-directory: agent
         run: uv run python ../evals/run_eval.py --name ci-red-team --only adversarial --gate red-team
+
+  # Phase 7: deploy from main once tests and the red-team gate pass. Same credentials and the
+  # same skip-with-a-notice as the red-team job. The bundle deploys the mock systems app, the
+  # dashboards, the Genie space, the pipeline and its job; the agent app deploys with the Agent
+  # Bricks CLI. The service principal needs CAN_MANAGE on both apps and the bundle's resources.
+  deploy:
+    needs: [tests, red-team]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+    steps:
+      - if: env.DATABRICKS_HOST == ''
+        run: echo "::notice::No Databricks secrets in this repository, so the deploy is skipped."
+      - if: env.DATABRICKS_HOST != ''
+        uses: actions/checkout@v4
+      - if: env.DATABRICKS_HOST != ''
+        # shortcut: pin to a release tag or commit SHA before adding the secrets (this job holds them)
+        uses: databricks/setup-cli@main
+      - if: env.DATABRICKS_HOST != ''
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - name: Deploy the bundle
+        if: env.DATABRICKS_HOST != ''
+        run: databricks bundle validate && databricks bundle deploy
+      - name: Deploy the agent
+        if: env.DATABRICKS_HOST != ''
+        run: uvx --from databricks-agentbricks agentbricks deploy sanad-cs --source agent

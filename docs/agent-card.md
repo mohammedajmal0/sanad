@@ -45,6 +45,7 @@ Found during Phases 6 and 7. Written by Claude at my request; I must be able to 
 - **Latency depends on the model gateway.** On a slow gateway day, p90 was 72–76 s against a 60 s target. Two of the seven model calls in a typical turn only format the Answer JSON.
 - **No counts across customers for invoices.** Customer Service looks up one customer at a time; Ops Analytics covers delivery performance. "How many invoices are there?" has no tool behind it (evaluation case `fb-invoice-count`).
 - **Vague questions get a question back.** "Duplicate invoices" without a customer gets "which customer?" (rule 5), which is honest but not as helpful as listing flagged duplicates.
+- **A gateway refusal fails the turn.** If the model service refuses (rate limit), the user sees "Request failed"; the fallback model covers a failing destination, not a refusal (game day, 2026-11-10).
 - **Evaluations are single-turn.** Every case is one fresh question, so failures that only show on a follow-up turn (like the formatter crash) aren't covered.
 
 ## Latest evaluation scores

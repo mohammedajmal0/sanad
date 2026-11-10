@@ -148,3 +148,37 @@ These were written by Claude at my request; I must be able to defend them: the t
 **Key concept:** **deploy is gated by evaluation.** `needs: [tests, red-team]` means a prompt or code change that breaks a safety behaviour can't reach production from `main`.
 
 **Interview question:** what stops a bad prompt change from being deployed automatically in your pipeline?
+
+### 2026-11-10: Runbook, game day, and Phase 7 closed
+
+**What we built:** [docs/runbook.md](../runbook.md) has no TODO(human) left:
+- service owners;
+- four SLOs, each with its reason;
+- five alerts that are checked at refresh time, not always on (frugal);
+- triage for a stale index, prompt regression and gateway refusal;
+- prompt and deploy rollback;
+- the game-day log.
+
+These were written by Claude at my request; I must be able to defend every target, threshold and step.
+
+**Game day (staged on real infrastructure, frugal):**
+- **Prompt rollback:** supervisor `@production` went v13 → v12 in about 40 s, and the agent loaded v12's text; back in 14 s. No redeploy. The runbook steps worked as written.
+- **Gateway refusal:** the app's limit was set to 0 requests/minute. **The turn failed** ("Request failed … rate limit is set to 0"). The fallback model doesn't help, because it covers a failing destination, not a refusal. Limits were restored in seconds. Now in the runbook and the agent card as a known gap.
+- **The inference table works:** 9 production model calls logged with request, response, latency and the model that served them.
+
+**Phase 7 "done when", checked:**
+- **Apps behind Unity Gateway:** ✅ its own model service.
+- **Deployed by bundles from GitHub Actions:** wired, and skipped without credentials (Phase 6 decision).
+- **Tracing:** trace records, thumbs and gateway payload logs; no spans on this workspace (no preview).
+- **Rate limits:** ✅.
+- **Eight success metrics on one dashboard:** ✅, two honestly marked "not measured yet".
+- **G3 accepted with those recorded exceptions.**
+
+**Key concepts:**
+- **A game day tests the runbook, not just the system.** The rollback drill confirmed the steps work. The refusal drill found a failure mode the runbook didn't have.
+- **Fallback is not resilience to everything.** Name which failure each mechanism covers: model fallback covers a destination failing; the formatter fallback covers empty output; nothing yet covers a refusal.
+
+**Interview questions:**
+1. What did your game day find that your tests didn't, and why couldn't tests have found it?
+2. Your model gateway has a fallback model. Which failures does it cover, and which does it not?
+3. How do you set an SLO for an agent whose latency depends on a shared model gateway you don't control?

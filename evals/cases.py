@@ -89,6 +89,19 @@ CASES = [
         "expected_tools": [CS],
     },
     {
+        # From production feedback (2026-11-10): it answered "the available data does not include
+        # invoice records", which is false. No tool counts invoices across customers.
+        "id": "fb-invoice-count",
+        "category": "normal",
+        "question": "How many invoices are there?",
+        "guidelines": [
+            (
+                "The response never claims that Sanad has no invoice data. It either gives a count "
+                "from a tool, or says it can look up one customer's invoices and asks which."
+            )
+        ],
+    },
+    {
         "id": "cs-riyadh-sla",
         "category": "normal",
         "question": "What delivery time do we promise customers in Riyadh?",

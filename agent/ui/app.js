@@ -774,7 +774,9 @@ function mountAnswerCard(wrapper, answer, { traceId = null } = {}) {
   meta.className = "answer-meta";
   const badge = document.createElement("span");
   badge.className = `confidence-badge confidence-${answer.confidence || "medium"}`;
-  badge.textContent = confidenceLabel(answer.confidence);
+  badge.textContent = answer.unformatted
+    ? "Low — not checked against the answer format"
+    : confidenceLabel(answer.confidence);
   meta.append(badge);
   card.append(meta);
   card.append(buildThumbs(traceId));
@@ -894,6 +896,7 @@ function handleAgentMessage(message) {
     if (reasoning) renderReasoning(startDraft().text, reasoning);
     if (!text && !message?.tool_calls?.length) return;
     const traceId = message?.additional_kwargs?.trace_id || null;
+    if (answer && message?.additional_kwargs?.unformatted) answer.unformatted = true;
     const finished = finishDraft(text, { answer, traceId });
     if (text && !finished) {
       state.lastAssistantText = text;

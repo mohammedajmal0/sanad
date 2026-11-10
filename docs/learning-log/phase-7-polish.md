@@ -59,3 +59,27 @@ These were written by Claude at my request (the first entry's UI too, in a secon
 **Interview questions:**
 1. Your production agent's traces show up in the list but can't be opened. How do you find out why?
 2. How would you detect that your observability pipeline has stopped working, before you need it during an incident?
+
+### 2026-11-10: First user feedback: a crashed turn, a false excuse, an unhelpful question
+
+**What I saw in the UI (with 👎):**
+- **"Duplicate Invoices"** got "which customer?". Rule 5 (ask when unclear) worked as designed: honest, but not helpful.
+- **The follow-up "INV-027711, INV-050001" crashed** ("Agent invocation failed: Invalid json output"). The app log showed `StructuredAnswer`'s formatter returning **empty** output twice, after which our code failed the whole turn.
+- **"How many invoices are there?"** got "the available data does not include invoice records", which is false. No tool counts invoices across customers, and the model invented an excuse.
+
+**What we built:**
+- **The formatter falls back instead of failing the turn** ([agent/agent/answer.py](../../agent/agent/answer.py)). After two failures it keeps the agent's own reply as a low-confidence Answer, marks it `unformatted` (the UI badge then says "not checked against the answer format"), and logs a WARNING. Citations are still added by code. I chose this over a friendly error, because the user keeps the answer and the badge says it wasn't checked.
+- **Reproduced locally:** the same two turns, replayed four times, fell back once (inside the run, the WARNING fired and the user still got "Both invoices are duplicates … ORD-027711 … SAR 1,440.71"). The empty output is intermittent, and its cause in the model is still unknown.
+- **The false excuse is now an evaluation case,** `fb-invoice-count` ([evals/cases.py](../../evals/cases.py)): never claim there's no invoice data; give a count from a tool, or ask which customer.
+
+**Key concepts:**
+- **Feedback → evaluation cases → fixes.** A 👎 from a real user became a test case the agent must pass on every run. That's the loop the thumbs exist for.
+- **Graceful degradation is honest about itself.** The fallback answer reaches the user, labelled as unchecked, and the log records it. That's different from both crashing and silently passing an unchecked answer off as checked.
+- **Without spans, the 👎 had no evidence.** I could see *that* I disliked the answer, but not what the agent did. The app log was the only record.
+
+**Mistakes:** "fail loudly" (Phase 4's choice in `StructuredAnswer`) was right for development and wrong for a user: the loud failure landed on the user, not on us.
+
+**Interview questions:**
+1. Your structured-output step sometimes returns empty output. What should the user see, and how do you make sure you find out it happened?
+2. How do you turn a user's thumbs-down into something that prevents the same failure next release?
+3. Your agent says "the data doesn't include invoice records" when it does. Is that a hallucination, a tool gap, or a prompt problem, and how do you tell?

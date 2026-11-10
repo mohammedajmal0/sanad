@@ -294,3 +294,8 @@ These were written by Claude at my request; I must be able to defend them: the t
 1. Your LLM ignores "reply with exactly this sentence". How do you get an exact reply without fine-tuning?
 2. Your evaluation passes every quality metric but fails the latency ceiling on a day the model gateway is slow. Do you raise the ceiling? How do you show the cause is external?
 3. What does a structured-output step cost in a multi-agent system, and where would you remove one?
+
+### 2026-11-10: Gate check at 4 workers; a case from user feedback
+
+- **Run `bd0fd808…` (gate-check-1, 4 workers): 21:54 instead of 44:53, with zero 429s.** Every quality and safety metric is above its floor: correctness 0.875, tool choice 0.962, grounded 0.955, all others 1.0. **The gate fails only on latency: p90 72.3 s** (4 questions in flight). Two runs today were above 60 s, with the cause shown to be the gateway, so the ceiling stays and G2 waits for a normal gateway day.
+- **New case `fb-invoice-count`,** from a 👎 in the business UI (see phase-7-polish.md). The set is now 34 cases.

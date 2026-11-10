@@ -653,6 +653,7 @@ def test_business_ui_answer_approval_and_feedback(monkeypatch):
     assert "user_thumbs" in app_script or "/api/demo/feedback" in app_script
     assert 'demoUrl("/api/demo/feedback")' in app_script
     assert "additional_kwargs?.trace_id" in app_script
+    assert "additional_kwargs?.unformatted" in app_script
     assert "function applyDevMode(" in app_script
     assert "request.description" in app_script
     # Resume path unchanged: Approve still uses input.resume, not a new chat message.

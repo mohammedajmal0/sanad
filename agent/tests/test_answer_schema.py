@@ -9,6 +9,7 @@ import pytest
 from agent.answer import FIXED_REPLY, StructuredAnswer, specialist_citations
 from agent.prompt import PROMPTS
 from agent.schema import Answer
+from langchain_core.exceptions import OutputParserException
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from pydantic import ValidationError
 
@@ -52,6 +53,26 @@ def test_a_declining_label_gets_the_fixed_reply_not_the_models_words():
     reply = asyncio.run(StructuredAnswer(Formatter()).aafter_agent(state, None))["messages"][0]
     assert reply.content == FIXED_REPLY["decline_memory"]
     assert "unlimited" not in reply.content
+
+
+def test_a_formatter_that_fails_twice_keeps_the_reply_flagged():
+    class Formatter:  # deployed 2026-11-10: empty output twice, and the whole turn failed
+        def with_structured_output(self, *args, **kwargs):
+            return self
+
+        async def ainvoke(self, messages):
+            raise OutputParserException("Invalid json output: ")
+
+    state = {
+        "messages": [
+            HumanMessage("INV-027711, INV-050001"),
+            AIMessage("Both bill ORD-027711.", id="a1"),
+        ]
+    }
+    reply = asyncio.run(StructuredAnswer(Formatter()).aafter_agent(state, None))["messages"][0]
+    assert reply.content == "Both bill ORD-027711."  # the user still gets the answer
+    assert reply.additional_kwargs["unformatted"] is True  # and the UI says it wasn't checked
+    assert reply.additional_kwargs["answer"]["confidence"] == "low"
 
 
 def test_the_answer_carries_its_turns_trace_id(monkeypatch):

@@ -7,6 +7,7 @@ usual, then one extra call with no tools bound applies the JSON schema.
 """
 
 import json
+import logging
 import re
 from typing import Any
 
@@ -17,6 +18,8 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, Tool
 from pydantic import ValidationError
 
 from agent.schema import Answer, Citation
+
+logger = logging.getLogger(__name__)
 
 # Written by Claude at my request; I must be able to defend it.
 INSTRUCTIONS = (
@@ -85,11 +88,27 @@ class StructuredAnswer(AgentMiddleware):
 
     async def aafter_agent(self, state: dict, runtime: Any) -> dict:
         messages = [*state["messages"], SystemMessage(INSTRUCTIONS)]
+        final = state["messages"][-1]
+        unformatted = False
         try:
             answer = await self.formatter.ainvoke(messages)
         except (ValidationError, OutputParserException) as error:
-            # e.g. no citations but confidence "high": ask once more with the reason, then fail loudly
-            answer = await self.formatter.ainvoke([*messages, SystemMessage(f"Fix this: {error}")])
+            # e.g. no citations but confidence "high": ask once more with the reason
+            try:
+                answer = await self.formatter.ainvoke(
+                    [*messages, SystemMessage(f"Fix this: {error}")]
+                )
+            except (ValidationError, OutputParserException) as again:
+                # Twice failed (empty output twice, 2026-11-10, on a deployed follow-up turn):
+                # keep the agent's own reply, flagged, rather than lose the turn. Chosen by me.
+                logger.warning("StructuredAnswer fell back to the agent's reply: %s", again)
+                answer = Answer(
+                    answer=final.text or "Sanad couldn't finish this answer. Please ask again.",
+                    citations=[],
+                    confidence="low",
+                    next_action="none",
+                )
+                unformatted = True
         answer.answer = FIXED_REPLY.get(answer.next_action, answer.answer)
         answer.answer = RECORD_ID.sub(r"\1-\2", answer.answer)  # ids in prose must be copyable
         # Citations are provenance, so code carries them: a specialist's citations (the formatter
@@ -103,18 +122,18 @@ class StructuredAnswer(AgentMiddleware):
             if c.ref not in known:
                 answer.citations.append(c)
                 known.add(c.ref)
-        final = state["messages"][-1]
         # This turn's MLflow trace (agent.run_agent's start_trace), so the chat UI's thumbs land on
         # the exact trace that produced this answer. None when tracing is off.
         span = mlflow.get_current_active_span()
         trace = {"trace_id": span.trace_id} if span else {}
+        flags = {"unformatted": True} if unformatted else {}
         # Same id: replaces the free-text reply, so the chat shows the answer once.
         return {
             "messages": [
                 AIMessage(
                     id=final.id,
                     content=answer.answer,
-                    additional_kwargs={"answer": answer.model_dump(), **trace},
+                    additional_kwargs={"answer": answer.model_dump(), **trace, **flags},
                 )
             ]
         }

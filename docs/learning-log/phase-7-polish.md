@@ -117,3 +117,24 @@ These were written by Claude at my request; I must be able to defend them: the t
 1. How would you build a metrics dashboard for an agent that doesn't wake a warehouse every time someone opens it?
 2. Your system tables contain user e-mails and IP addresses. How do you build a dashboard on them without exposing those?
 3. A historical metric was measured wrongly. Do you fix it at the source, or where it's consumed? What are the trade-offs?
+
+### 2026-11-10: The agent's own model service: fallback, rate limits, inference table
+
+**What we built:**
+- **Unity Gateway model service `sanad.ai.sanad_agent_model`** ([governance/sanad_agent_model.json](../../governance/sanad_agent_model.json)):
+  - **Routing:** primary `gpt-oss-120b`, fallback `llama_v3_3_70b_instruct`. That's another model family, and not the judge's qwen.
+  - **Rate limits on the app's principal:** 120 calls/min (~17 questions) and 1M tokens/hour (~100 questions). Anyone else calling it directly gets 30 calls/min.
+  - **Inference table** `sanad.ops.sanad_agent_model_payload`: the *gateway* logs every model call into UC. That partly closes the "no production spans" gap: we can't see tool calls, but we can see what the model was sent and what it returned.
+- **Bound with `agentbricks experimental models bind`.** Deploy granted the app EXECUTE and set `AGENT_MODEL_SERVICE_AGENT`. A live question returned "Abha" through the service. Evaluations still call `system.ai.gpt-oss-120b` directly (no deploy env locally), so they never hit the app's rate limit.
+- **No spend budget:** budgets are account-admin and only *notify*. Rate limits actually cap usage.
+
+**Mistake:** the first create failed with "Destination model 'system.ai.meta-llama-3-3-70b-instruct' does not exist". Service names and model names differ, and the system service's own config showed the real model, `system.ai.llama_v3_3_70b_instruct`.
+
+**Key concepts:**
+- **A model service is a governed wrapper around models.** Who may call it (EXECUTE), where traffic goes (routing and fallback), how much (rate limits), and what's recorded (inference table) are set in one Unity Catalog securable, not in agent code.
+- **Rate limits cap, budgets alert.** For runaway-loop protection, you want the thing that says no.
+
+**Interview questions:**
+1. Your primary model's provider has an outage. What happens to your agent, and where is that decided?
+2. How did you size the rate limits, and what does a user see when one is hit?
+3. Why log model calls at the gateway rather than in the app?

@@ -1,0 +1,43 @@
+{
+  "comment": "Sanad agent's model (Phase 7). Primary gpt-oss-120b; Llama 3.3 70B if it fails (another family, and not the judge's qwen). Rate limits cap a runaway loop: the app's principal makes ~7 calls and ~10,000 tokens per question, so 120 calls/min is ~17 questions a minute and 1M tokens/hour ~100 questions an hour. Model calls are logged to sanad.ops.sanad_agent_model_payload (admins only). Written by Claude at my request.",
+  "config": {
+    "routing": {
+      "destinations": [
+        {
+          "name": "primary",
+          "destination_type": "DESTINATION_TYPE_PAY_PER_TOKEN_FOUNDATION_MODEL",
+          "pay_per_token_config": {"model": "models/system.ai.gpt-oss-120b"}
+        }
+      ],
+      "fallback": {
+        "destinations": [
+          {
+            "name": "fallback",
+            "destination_type": "DESTINATION_TYPE_PAY_PER_TOKEN_FOUNDATION_MODEL",
+            "pay_per_token_config": {"model": "models/system.ai.llama_v3_3_70b_instruct"}
+          }
+        ]
+      }
+    },
+    "rate_limits": [
+      {
+        "key": "RATE_LIMIT_KEY_SERVICE_PRINCIPAL",
+        "principal": "402d157e-900c-4aad-acfb-73b749d89b48",
+        "renewal_period": "RATE_LIMIT_RENEWAL_PERIOD_MINUTE",
+        "requests": 120
+      },
+      {
+        "key": "RATE_LIMIT_KEY_SERVICE_PRINCIPAL",
+        "principal": "402d157e-900c-4aad-acfb-73b749d89b48",
+        "renewal_period": "RATE_LIMIT_RENEWAL_PERIOD_HOUR",
+        "tokens": 1000000
+      },
+      {
+        "key": "RATE_LIMIT_KEY_USER_DEFAULT",
+        "renewal_period": "RATE_LIMIT_RENEWAL_PERIOD_MINUTE",
+        "requests": 30
+      }
+    ],
+    "inference_table": {"parent": "schemas/sanad.ops", "table_name_prefix": "sanad_agent_model"}
+  }
+}

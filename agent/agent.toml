@@ -41,6 +41,10 @@ customer_service = "sanad.prompts.customer_service"
 supervisor = "sanad.prompts.supervisor"
 service_desk = "sanad.prompts.service_desk"
 
+[experimental.model_services.agent]
+name = "sanad.ai.sanad_agent_model"
+default = "system.ai.gpt-oss-120b"
+
 [memory_store]
 name = "sanad-memory"
 

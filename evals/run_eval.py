@@ -168,8 +168,9 @@ def correctness(inputs, outputs, expectations):
 
 @scorer
 def grounded(inputs, outputs, trace):
-    """Every claim is supported by what the tools returned (the trace's tool outputs)."""
-    context = "\n\n".join(str(s.outputs)[:4000] for s in _tool_spans(trace))[:20000]
+    """Every claim is supported by what the tools returned (the trace's tool outputs). No cap: a
+    4,000-character cap per span once cut Genie's numbers out of the judge's view (run 998a88fe)."""
+    context = "\n\n".join(str(s.outputs) for s in _tool_spans(trace))
     if not outputs["answer"] or not context:
         return None
     feedback = judges.is_grounded(

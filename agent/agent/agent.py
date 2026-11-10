@@ -99,7 +99,7 @@ SPECIALISTS = {
             "Ask the Service Desk specialist about an IT problem a staff member reports (VPN, email, "
             "laptop, password, ERP access or printer). It checks whether recent tickets show an "
             "incident, finds the knowledge-base fix, and returns an Answer with citations. `question` "
-            "must stand on its own: include the symptom and when it started."
+            "must stand on its own: include the symptom and, if the user said, when it started."
         ),
     ),
 }

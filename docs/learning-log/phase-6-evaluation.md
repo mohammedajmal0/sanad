@@ -299,3 +299,10 @@ These were written by Claude at my request; I must be able to defend them: the t
 
 - **Run `bd0fd808…` (gate-check-1, 4 workers): 21:54 instead of 44:53, with zero 429s.** Every quality and safety metric is above its floor: correctness 0.875, tool choice 0.962, grounded 0.955, all others 1.0. **The gate fails only on latency: p90 72.3 s** (4 questions in flight). Two runs today were above 60 s, with the cause shown to be the gateway, so the ceiling stays and G2 waits for a normal gateway day.
 - **New case `fb-invoice-count`,** from a 👎 in the business UI (see phase-7-polish.md). The set is now 34 cases.
+
+### 2026-11-10: Phase 6 closed; G2 accepted with two exceptions (my decision)
+
+- **What passes:** every quality and safety threshold in the `full` gate (run `bd0fd808…`), and the red-team behaviours the CI gate checks.
+- **Exception 1, latency:** p90 72.3 s against a 60 s ceiling. Two runs were checked on a day the model gateway was slow (Genie cases took 43 s in the baseline and about 100 s today, with no change on their path). The ceiling stays at 60 s.
+- **Exception 2, CI:** the red-team gate is wired in `.github/workflows/ci.yml` but skipped, because the repository has no Databricks credentials. A dedicated `sanad-ci` principal is the way to switch it on, left as is for now.
+- **Still open, not blocking:** judge calibration against my own labels (p6-calibration).

@@ -32,17 +32,26 @@ Every answer follows the Pydantic schema in [agent/agent/schema.py](../agent/age
 - `answer`: plain text.
 - `citations`: each a `document` (doc_id), a `record` (invoice, order, shipment or account id), or a `query` (an Ops Analytics answer, cited by the Genie `deep_link` that opens its SQL and rows).
 - `confidence`: `high`, `medium` or `low`. An answer without citations must be `low`.
-- `next_action`: `none`, `draft_credit_note`, `open_case`, `open_ticket` or `ask_user`.
+- `next_action`: `none`, `draft_credit_note`, `open_case`, `open_ticket`, `ask_user`, `out_of_scope` or `decline_memory`. For the last two, code writes the reply (`FIXED_REPLY` in [agent/agent/answer.py](../agent/agent/answer.py)).
 
 The chat shows `answer`, and the whole object is in the final message's `additional_kwargs["answer"]`. The system prompts are `sanad.prompts.supervisor@production` and `sanad.prompts.customer_service@production` in the MLflow Prompt Registry. Their sources are in [agent/agent/prompts/](../agent/agent/prompts/).
 
 ## Known limitations
 
-TODO(human): add each limitation as you find it, especially during the Phase 6 red-team runs and the Phase 7 game day.
+Found during Phases 6 and 7. Written by Claude at my request; I must be able to defend each one.
+
+- **Production traces have no spans.** Deployed traces keep their record (id, duration, request and answer preview) and the user's thumbs, but not the step-by-step spans: the app can't reach cloud storage on this workspace. Debug a production answer from the app log, or replay it locally. The upgrade path is MLflow's trace storage in Unity Catalog tables (it needs the "OpenTelemetry on Databricks" preview). Decided on 2026-11-10 to keep it simple.
+- **The answer formatter sometimes returns empty output.** It happened in 1 of 5 local replays of one conversation, and on one deployed turn. The turn no longer fails: the user gets the agent's own reply, marked "not checked against the answer format", and the app log has a WARNING. The cause is unknown.
+- **Latency depends on the model gateway.** On a slow gateway day, p90 was 72–76 s against a 60 s target. Two of the seven model calls in a typical turn only format the Answer JSON.
+- **No counts across customers for invoices.** Customer Service looks up one customer at a time; Ops Analytics covers delivery performance. "How many invoices are there?" has no tool behind it (evaluation case `fb-invoice-count`).
+- **Vague questions get a question back.** "Duplicate invoices" without a customer gets "which customer?" (rule 5), which is honest but not as helpful as listing flagged duplicates.
+- **Evaluations are single-turn.** Every case is one fresh question, so failures that only show on a follow-up turn (like the formatter crash) aren't covered.
 
 ## Latest evaluation scores
 
 Filled in from MLflow evaluation runs starting in Phase 6. Targets live in [success-metrics.md](success-metrics.md).
 
-| Run | Date | Correctness | Groundedness | Safety | PII leaks | p95 latency | Cost per request |
+| Run | Date | Correctness | Groundedness | Safety | PII leaks | p90 latency | Billed tokens per question (mean) |
 |---|---|---|---|---|---|---|---|
+| baseline `5fce068b` | 2026-11-10 | 0.933 | 0.950 | 0.962 | 0 | 45 s | 9,135 |
+| gate-check-1 `bd0fd808` (4 workers) | 2026-11-10 | 0.875 | 0.955 | 1.000 | 0 | 72.3 s | 10,801 |

@@ -83,3 +83,11 @@ These were written by Claude at my request (the first entry's UI too, in a secon
 1. Your structured-output step sometimes returns empty output. What should the user see, and how do you make sure you find out it happened?
 2. How do you turn a user's thumbs-down into something that prevents the same failure next release?
 3. Your agent says "the data doesn't include invoice records" when it does. Is that a hallucination, a tool gap, or a prompt problem, and how do you tell?
+
+### 2026-11-10: Production tracing kept simple (my decision)
+
+**Decision:** no Unity Catalog trace storage for now. Production keeps trace records and thumbs, and debugging uses the app log or a local replay. Evaluations and local runs keep full traces. The gap and the upgrade path (MLflow traces in UC tables through the workspace's OpenTelemetry endpoint, which needs a preview) are in the agent card's Known limitations, which Claude filled in at my request.
+
+**Key concept:** deferring is a decision when it's written down with its cost and its fix. The cost here: a 👎 on a production answer shows *what* happened but not *how*.
+
+**Interview question:** you found that production traces are incomplete. Why might you choose not to fix it yet, and what would make you change your mind?

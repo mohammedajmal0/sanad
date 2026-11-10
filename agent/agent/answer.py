@@ -27,6 +27,20 @@ INSTRUCTIONS = (
 )
 
 
+# The model labels, code speaks (2026-11-10): asked four times to "reply with exactly this",
+# gpt-oss-120b paraphrased every time, but it fills an enum reliably. Written by Claude at my request.
+FIXED_REPLY = {
+    "out_of_scope": (
+        "That's outside what I can do. I can help with one customer's account, invoices and "
+        "deliveries, with IT problems and IT ticket trends, and with delivery performance across "
+        "regions and carriers."
+    ),
+    "decline_memory": (
+        "I can't keep customer or business data in memory; I only remember your own preferences. "
+        "Customer facts come from Najm's systems."
+    ),
+}
+
 # Record ids as the tools print them. In prose the model sometimes writes a non-breaking hyphen
 # (U+2011, "INV\u2011050001"): it looks the same, but a person searching the ERP for it finds nothing.
 RECORD_ID = re.compile(r"\b(INV|ORD|ACC|SHP|TKT)[-\u2011](\d{5,6})\b")
@@ -75,6 +89,7 @@ class StructuredAnswer(AgentMiddleware):
         except (ValidationError, OutputParserException) as error:
             # e.g. no citations but confidence "high": ask once more with the reason, then fail loudly
             answer = await self.formatter.ainvoke([*messages, SystemMessage(f"Fix this: {error}")])
+        answer.answer = FIXED_REPLY.get(answer.next_action, answer.answer)
         answer.answer = RECORD_ID.sub(r"\1-\2", answer.answer)  # ids in prose must be copyable
         # Citations are provenance, so code carries them: a specialist's citations (the formatter
         # once dropped a policy when merging two answers) and every record the answer names (a

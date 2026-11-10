@@ -16,9 +16,10 @@ import sys
 import uuid
 from pathlib import Path
 
-os.environ.setdefault(
-    "MLFLOW_GENAI_EVAL_MAX_WORKERS", "2"
-)  # an 8 GB laptop and a rate-limited gateway
+# 4 cases at a time (threads, so memory isn't the limit). At 2, a run took 41 min with no 429s,
+# and MLflow retries a 429 itself (MLFLOW_GENAI_EVAL_MAX_RETRIES). latency_s then means "with 4
+# questions in flight". Iterate with --only on the failing cases; run the full set once per round.
+os.environ.setdefault("MLFLOW_GENAI_EVAL_MAX_WORKERS", "4")
 
 import httpx
 import mlflow

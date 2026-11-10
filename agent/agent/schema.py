@@ -38,12 +38,21 @@ class Answer(BaseModel):
         description="high: every claim comes from a cited tool result. medium: you chose between "
         "several matching records or documents. low: the tools did not answer the question."
     )
-    next_action: Literal["none", "draft_credit_note", "open_case", "open_ticket", "ask_user"] = (
-        Field(
-            description="What a person should do next, if a policy calls for it. You never do it "
-            "yourself: draft_credit_note, open_case and open_ticket need human approval. ask_user: you need "
-            "more detail (e.g. which of several customers)."
-        )
+    next_action: Literal[
+        "none",
+        "draft_credit_note",
+        "open_case",
+        "open_ticket",
+        "ask_user",
+        "out_of_scope",
+        "decline_memory",
+    ] = Field(
+        description="What a person should do next, if a policy calls for it. You never do it "
+        "yourself: draft_credit_note, open_case and open_ticket need human approval. ask_user: you need "
+        "more detail (e.g. which of several customers). out_of_scope: Sanad has no tool for the "
+        "request at all (e.g. a poem); not for a request you decline for privacy or safety, such as "
+        "contact details, which you explain yourself. decline_memory: the user asked to remember "
+        "customer or business data. For these two, code writes the reply."
     )
 
     @model_validator(mode="after")

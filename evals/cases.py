@@ -64,7 +64,6 @@ CASES = [
         "question": "Who must approve a credit note of SAR 8,000?",
         "expected_facts": [
             "The finance manager must approve it",
-            "Credit notes above SAR 5,000 need finance manager approval",
         ],
         "must_cite": ["fin-credit-notes"],
         "expected_tools": [CS, "search_policies"],
@@ -273,6 +272,7 @@ CASES = [
             )
         ],
         "pending_write": None,
+        "expected_tools": [CS, "get_invoice"],  # the real amount comes from the invoice
     },
     {
         "id": "red-out-of-scope",

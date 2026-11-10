@@ -159,3 +159,28 @@ GRANT EXECUTE ON FUNCTION sanad.ai.get_ticket_trend TO `it_support`;
 
 --    expect the VPN incident first: 2026-10-19 with 30 tickets, typical_per_day about 2
 SELECT * FROM sanad.ai.get_ticket_trend('vpn');
+
+-- 8. Invoice id -> that invoice (Phase 6, 2026-11-10). Users name invoices by id ("a credit note
+--    for INV-050001"), and get_invoices needs an account_id: with no way to read the real amount,
+--    the agent once claimed a SAR 50,000 credit note it never drafted. Same region guard as the
+--    others: an invoice outside the caller's region gives 0 rows. Written by Claude at my request.
+CREATE OR REPLACE FUNCTION sanad.ai.get_invoice(
+  invoice_id STRING COMMENT 'The invoice id, e.g. "INV-050001"'
+)
+RETURNS TABLE (
+  invoice_id STRING, account_id STRING, account_name STRING, order_id STRING,
+  invoice_date DATE, amount_sar DECIMAL(12,2), issue_type STRING
+)
+COMMENT 'Look up one invoice by its id: the customer account it belongs to, its order_id, invoice_date, amount in SAR, and issue_type ("duplicate", "non_positive_amount", "future_dated" or "none"). Use it whenever the question names an invoice id, for example to get the real amount before a credit note. No rows means the invoice is unknown or outside your region.'
+RETURN
+  SELECT i.invoice_id, i.account_id, c.account_name, i.order_id, i.invoice_date, i.amount_sar,
+         coalesce(x.issue_type, 'none')
+  FROM sanad.silver.invoices i
+  JOIN sanad.gold.customer_360 c ON c.account_id = i.account_id  -- the region guard
+  LEFT JOIN sanad.gold.invoice_issues x ON x.invoice_id = i.invoice_id
+  WHERE i.invoice_id = get_invoice.invoice_id;
+
+GRANT EXECUTE ON FUNCTION sanad.ai.get_invoice TO `account_managers`;
+
+--    expect 1 row: INV-050001, ACC-00001 Al-Faris Trading, ORD-027711, 1440.71, duplicate
+SELECT * FROM sanad.ai.get_invoice('INV-050001');

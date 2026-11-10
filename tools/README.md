@@ -16,6 +16,7 @@ Unity Catalog functions the agents call as tools. They run under UC permissions,
 |---|---|---|---|
 | `get_customer_summary` | part of a customer name | up to 5 accounts: id, region, segment, orders, order total (SAR), last order date, flagged invoices | `gold.customer_360` |
 | `get_invoices` | `account_id` | up to 50 invoices, flagged first, then newest, each with `issue_type` (`duplicate`, `non_positive_amount`, `future_dated`, `none`) | `silver.invoices`, `gold.invoice_issues` |
+| `get_invoice` | `invoice_id` | that one invoice with its account, order, amount and `issue_type` (2026-11-10: the agent needs the real amount before a credit note) | `silver.invoices`, `gold.invoice_issues` |
 | `get_shipment_status` | `order_id` | shipments with dates, `status` and `days_late` as of `as_of_date` | `silver.shipments`, `silver.orders` |
 | `get_ticket_trend` | an IT ticket category | its busiest days of the last 60, with `typical_per_day` (the 90 days before) and an `example_ticket_id`; Service Desk's tool, `EXECUTE` for `it_support` only (2026-11-09) | `silver.tickets` |
 | `search_policies` | the question | up to 5 whole documents (`doc_id`, `title`, type, department, effective date, text) for the caller's audience | `ai.chunks_index` through `vector_search()` |

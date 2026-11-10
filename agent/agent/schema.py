@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field, model_validator
 class Citation(BaseModel):
     source: Literal["document", "record", "query"] = Field(
         description="document: a policy or KB article from search_policies. "
-        "record: a row from a lookup tool (get_customer_summary, get_invoices, "
+        "record: a row from a lookup tool (get_customer_summary, get_invoices, get_invoice, "
         "get_shipment_status or get_ticket_trend). "
         "query: an ops_analytics (Genie) answer, which ran SQL on the gold tables."
     )

@@ -83,7 +83,8 @@ def approval_rules(tool_names: list[str]) -> dict:
 # route. Each has its prompt at sanad.prompts.<name>. Written by Claude at my request.
 SPECIALISTS = {
     "customer_service": (
-        {"get_customer_summary", "get_invoices", "get_shipment_status", "search_policies"},
+        {"get_customer_summary", "get_invoices", "get_invoice", "get_shipment_status",
+         "search_policies"},
         (
             "Ask the Customer Service specialist about one customer's account, invoices, orders or "
             "shipments, or the billing, refund and delivery policies that apply to them. It looks the "

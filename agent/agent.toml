@@ -16,6 +16,10 @@ id = "get_invoices"
 auth = "user"
 source = {kind = "uc_function", function = "sanad.ai.get_invoices"}
 [[tools]]
+id = "get_invoice"
+auth = "user"
+source = {kind = "uc_function", function = "sanad.ai.get_invoice"}
+[[tools]]
 id = "get_shipment_status"
 auth = "user"
 source = {kind = "uc_function", function = "sanad.ai.get_shipment_status"}

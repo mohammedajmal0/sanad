@@ -1,0 +1,1011 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sanad System Tour</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: a transit-style system map (inline SVG, camera zooms per chapter) beside a story panel; stacks on phones.
+   Lines are flows (data, documents, question, write, quality); stations are components; dots are things moving. */
+:root {
+  --bg: #eef1f5;
+  --surface: #ffffff;
+  --ink: #17202b;
+  --ink-2: #4b5a6b;
+  --muted: #8d99a8;
+  --line: #d3d9e1;
+  --k-data: #0b7285;
+  --k-docs: #4f7f0b;
+  --k-ask: #3446b8;
+  --k-write: #c2410c;
+  --k-q: #7b2d93;
+  --k-clue: #d42a2a;
+  --k-gov: #56606d;
+  --ok: #2b8a3e;
+  --bad: #c92a2a;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-cond: "IBM Plex Sans Condensed", "Arial Narrow", "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --font-ar: "IBM Plex Sans Arabic", "Noto Sans Arabic", "Geeza Pro", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1218; --surface: #151c25; --ink: #e3e9f0; --ink-2: #9eacbc; --muted: #5d6a79; --line: #2a3441;
+    --k-data: #3bc0d6; --k-docs: #94cf3a; --k-ask: #8197ff; --k-write: #ff8f4a; --k-q: #d58cf0; --k-clue: #ff5c5c; --k-gov: #a3adba;
+    --ok: #63c76f; --bad: #ff6b6b; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1218; --surface: #151c25; --ink: #e3e9f0; --ink-2: #9eacbc; --muted: #5d6a79; --line: #2a3441;
+  --k-data: #3bc0d6; --k-docs: #94cf3a; --k-ask: #8197ff; --k-write: #ff8f4a; --k-q: #d58cf0; --k-clue: #ff5c5c; --k-gov: #a3adba;
+  --ok: #63c76f; --bad: #ff6b6b; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--font-body); }
+.wrap {
+  max-width: 1560px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 18px 32px;
+}
+code, .mono { font-family: var(--font-mono); font-size: 0.86em; }
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+
+/* header */
+.top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; margin-bottom: 14px; }
+.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand h1 { font: 600 26px/1.1 var(--font-cond); letter-spacing: 0.01em; }
+.brand .ar { font: 500 22px/1 var(--font-ar); color: var(--k-q); }
+.top p { margin: 0; color: var(--ink-2); max-width: 70ch; }
+
+/* main grid */
+.grid { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1080px) {
+  .grid { grid-template-columns: minmax(0, 1.75fr) minmax(340px, 1fr); align-items: start; }
+  .stage { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); }
+}
+.stage { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.map {
+  position: relative; width: 100%; aspect-ratio: 148 / 100;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+}
+@media (max-width: 700px) { .map { aspect-ratio: 1 / 1; } }
+.map svg { display: block; width: 100%; height: 100%; }
+
+/* SVG: zones, stations, lines */
+.zone rect { stroke: none; }
+.zone.k-ask rect { fill: color-mix(in srgb, var(--k-ask) 6%, transparent); }
+.zone.k-data rect { fill: color-mix(in srgb, var(--k-data) 6%, transparent); }
+.zone.k-q rect { fill: color-mix(in srgb, var(--k-q) 6%, transparent); }
+.zone.k-gov rect { fill: color-mix(in srgb, var(--k-gov) 6%, transparent); }
+.zone.k-sub rect { fill: color-mix(in srgb, var(--k-data) 7%, transparent); stroke: color-mix(in srgb, var(--k-data) 35%, transparent); stroke-dasharray: 3 4; }
+.zlabel { font: 600 11px var(--font-cond); letter-spacing: 0.09em; text-transform: uppercase; fill: var(--ink-2); }
+.zlabel, .el, .tag { paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
+#band rect { fill: color-mix(in srgb, var(--k-gov) 10%, transparent); stroke: var(--k-gov); stroke-width: 1.2; stroke-dasharray: 6 5; }
+#band text { fill: var(--k-gov); }
+.st rect { fill: var(--surface); stroke-width: 2.5; }
+.st .nm { font: 600 15px var(--font-cond); fill: var(--ink); }
+.st .sb { font: 400 11px var(--font-mono); fill: var(--ink-2); }
+.st.small .nm { font-size: 13px; }
+.st.small .sb { font-size: 10px; }
+.k-data { --k: var(--k-data); } .k-docs { --k: var(--k-docs); } .k-ask { --k: var(--k-ask); }
+.k-write { --k: var(--k-write); } .k-q { --k: var(--k-q); } .k-clue { --k: var(--k-clue); } .k-gov { --k: var(--k-gov); }
+.st rect { stroke: var(--k); }
+.eg .cs { fill: none; stroke: var(--surface); stroke-width: 10; stroke-linecap: round; stroke-linejoin: round; }
+.eg .ln { fill: none; stroke: var(--k); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; transition: stroke-width .25s; }
+.eg.thin .ln { stroke-width: 2.5; }
+.eg.manual .ln { stroke-dasharray: 9 7; stroke-linecap: butt; }
+.eg.notyet .ln { stroke: var(--muted); stroke-dasharray: 1 8; stroke-width: 4; }
+.eg.lit .ln { stroke-width: 6.5; filter: drop-shadow(0 0 5px var(--k)); }
+.mk { fill: var(--k); }
+.mk.notyet { fill: var(--muted); }
+.el { font: 500 10.5px var(--font-body); fill: var(--ink-2); }
+.tag { font: 600 9.5px var(--font-cond); letter-spacing: 0.06em; text-transform: uppercase; fill: var(--muted); }
+.tok .dot { fill: var(--k); stroke: var(--surface); stroke-width: 2.5; }
+.tok .halo { fill: var(--k); opacity: 0.22; }
+.trail { stroke: var(--k); stroke-width: 2; stroke-dasharray: 3 6; fill: none; opacity: .6; }
+.st, .eg, .el, .tag, #band { transition: opacity .45s ease; }
+.focusing .st:not(.on), .focusing .eg:not(.on), .focusing .el:not(.on), .focusing .tag:not(.on), .focusing #band:not(.on) { opacity: 0.14; }
+.st.ping rect { animation: ping .8s ease-out; }
+@keyframes ping { 0% { stroke-width: 2.5; } 35% { stroke-width: 7; } 100% { stroke-width: 2.5; } }
+
+/* controls */
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+button {
+  font: 500 14px var(--font-body); color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 8px; padding: 7px 14px; cursor: pointer;
+}
+button:hover { border-color: var(--ink-2); }
+button:focus-visible { outline: 3px solid var(--k-ask); outline-offset: 2px; }
+#play { background: var(--ink); color: var(--surface); border-color: var(--ink); min-width: 92px; }
+#count { color: var(--ink-2); font: 400 13px var(--font-mono); margin-left: auto; }
+.chapters { display: grid; grid-template-columns: repeat(16, minmax(0, 1fr)); gap: 4px; }
+@media (max-width: 700px) { .chapters { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+.chapters button {
+  padding: 6px 0 5px; font: 600 12px var(--font-mono); border-radius: 6px;
+  border-top: 4px solid var(--k); color: var(--ink-2);
+}
+.chapters button[aria-current="true"] { background: var(--k); color: var(--surface); border-color: var(--k); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend svg { flex: none; }
+.legend .lk { stroke: var(--k); stroke-width: 4; fill: none; }
+.legend .ld { fill: var(--k); stroke: var(--surface); stroke-width: 2; }
+
+/* story panel */
+.panel {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  padding: 20px 22px 24px; display: flex; flex-direction: column; gap: 14px; min-width: 0;
+}
+.eyebrow { margin: 0; font: 600 12px var(--font-cond); letter-spacing: 0.1em; text-transform: uppercase; color: var(--k); }
+.panel h2 { font: 600 28px/1.15 var(--font-cond); }
+.plain { margin: 0; font-size: 16px; color: var(--ink); }
+.beat {
+  margin: 0; padding: 12px 14px; border-radius: 10px; border-left: 4px solid var(--k);
+  background: color-mix(in srgb, var(--k) 8%, transparent);
+}
+.beat .n { display: block; font: 600 11px var(--font-mono); color: var(--ink-2); margin-bottom: 2px; }
+.panel h3 { font: 600 13px var(--font-cond); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); margin-bottom: 6px; }
+.real ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.real li { display: grid; gap: 1px; }
+.real li code { color: var(--ink); overflow-wrap: anywhere; }
+.real li span { color: var(--ink-2); font-size: 13.5px; }
+.ex { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.ex table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.ex th { text-align: left; font: 600 11.5px var(--font-cond); letter-spacing: .05em; text-transform: uppercase; color: var(--ink-2); padding: 4px 6px; border-bottom: 1px solid var(--line); }
+.ex td { padding: 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.ex table.mono td { font: 12.5px var(--font-mono); }
+.ex .tablewrap { overflow-x: auto; }
+.ex tr.clue-row td:first-child { box-shadow: inset 3px 0 0 var(--k-clue); }
+.ex tr.win td { font-weight: 600; }
+.note { margin: 0; font-size: 13px; color: var(--ink-2); }
+.ex pre {
+  margin: 0; padding: 12px 14px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line);
+  font: 12.5px/1.5 var(--font-mono); overflow-x: auto; white-space: pre;
+}
+.chat, .approve, .mini { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; background: var(--bg); }
+.chat p, .approve p, .mini p { margin: 4px 0 0; }
+.who { font: 600 11.5px var(--font-cond); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
+.approve { border-color: var(--k-write); }
+.approve .who { color: var(--k-write); }
+.btns { display: flex; gap: 8px; margin-top: 8px; }
+.btn { font-size: 13px; padding: 4px 12px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface); }
+.btn.yes { border-color: var(--ok); color: var(--ok); font-weight: 600; }
+.mini .q { font-style: italic; color: var(--ink-2); }
+.mini h3 { margin: 0; }
+.kv { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 13.5px; }
+.kv li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 12px; border-bottom: 1px solid var(--line); padding: 4px 0; }
+.kv li > :first-child { color: var(--ink-2); }
+.steps, .calls, .pipe, .rules { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; }
+.calls li span { display: block; color: var(--ink-2); font-size: 13px; }
+.calls li.clue-row::marker { color: var(--k-clue); }
+.pipe { list-style: none; padding: 0; }
+.pipe li { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; display: grid; gap: 2px; }
+.pipe li span { font-size: 13px; color: var(--ink-2); }
+.pipe li em { font-style: normal; font: 600 11.5px var(--font-cond); letter-spacing: .06em; text-transform: uppercase; }
+.pipe li.ok em { color: var(--ok); }
+.pipe li.skip { border-style: dashed; }
+.pipe li.skip em { color: var(--muted); }
+.bars { display: grid; gap: 9px; }
+.bar { display: grid; gap: 3px; font-size: 13px; }
+.bar .lab { display: flex; justify-content: space-between; gap: 8px; }
+.bar .lab b { font: 500 12.5px var(--font-mono); font-variant-numeric: tabular-nums; }
+.bar .lab b.pass { color: var(--ok); }
+.bar .lab b.fail { color: var(--bad); }
+.bar .track { position: relative; height: 9px; border-radius: 5px; background: var(--bg); border: 1px solid var(--line); }
+.bar .fill { position: absolute; inset: 0 auto 0 0; width: 0; border-radius: 5px; background: var(--k-q); transition: width 1s cubic-bezier(.2,.7,.2,1); }
+.bar .fill.fail { background: var(--bad); }
+.bar .floor { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink); }
+.rules li b { color: var(--ink); }
+
+@media (prefers-reduced-motion: reduce) {
+  .st, .eg, .el, .tag, #band, .eg .ln, .bar .fill { transition: none; }
+  .st.ping rect { animation: none; }
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><h1>Sanad</h1><span class="ar" lang="ar">سند</span></div>
+    <p>A guided tour of the whole system: how data gets in, how a question gets answered, and how we check the answers. Press Play, or step with ← and →.</p>
+  </header>
+
+  <div class="grid">
+    <div class="stage">
+      <div class="map">
+        <svg id="map" viewBox="0 0 1480 1000" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Sanad system map">
+          <defs id="defs"></defs>
+          <g id="zones"></g>
+          <g id="edges"></g>
+          <g id="labels"></g>
+          <g id="stations"></g>
+          <g id="tokens"></g>
+        </svg>
+      </div>
+      <div class="controls">
+        <button id="prev" type="button">◀ Back</button>
+        <button id="play" type="button" aria-pressed="false">▶ Play</button>
+        <button id="next" type="button">Next ▶</button>
+        <span id="count"></span>
+      </div>
+      <nav class="chapters" id="chapters" aria-label="Chapters"></nav>
+      <div class="legend" aria-label="Legend">
+        <span class="k-data"><svg width="26" height="10"><line class="lk" x1="2" y1="5" x2="24" y2="5"/></svg>Data rows</span>
+        <span class="k-docs"><svg width="26" height="10"><line class="lk" x1="2" y1="5" x2="24" y2="5"/></svg>Documents</span>
+        <span class="k-ask"><svg width="26" height="10"><line class="lk" x1="2" y1="5" x2="24" y2="5"/></svg>Question and answer</span>
+        <span class="k-write"><svg width="26" height="10"><line class="lk" x1="2" y1="5" x2="24" y2="5"/></svg>Write action</span>
+        <span class="k-q"><svg width="26" height="10"><line class="lk" x1="2" y1="5" x2="24" y2="5"/></svg>Tracing and quality</span>
+        <span class="k-clue"><svg width="14" height="14"><circle class="ld" cx="7" cy="7" r="5.5"/></svg>The clue: Al-Faris duplicate invoice</span>
+        <span class="k-gov"><svg width="26" height="10"><line class="lk" x1="2" y1="5" x2="24" y2="5"/></svg>Solid: runs by itself</span>
+        <span class="k-gov"><svg width="26" height="10"><line class="lk" x1="2" y1="5" x2="24" y2="5" stroke-dasharray="7 5"/></svg>Dashed: a person runs it</span>
+        <span class="k-gov"><svg width="26" height="10"><line class="lk" x1="3" y1="5" x2="24" y2="5" stroke-dasharray="1 7" stroke-linecap="round" style="stroke:var(--muted)"/></svg>Dotted grey: wired, not running yet</span>
+      </div>
+    </div>
+
+    <aside class="panel" id="panel">
+      <p class="eyebrow" id="act"></p>
+      <h2 id="title"></h2>
+      <p class="plain" id="plain"></p>
+      <p class="beat" id="beat" aria-live="polite"></p>
+      <section class="real"><h3>What really runs</h3><ul id="real"></ul></section>
+      <section class="ex" id="ex"></section>
+    </aside>
+  </div>
+</div>
+
+<script>
+/* ---------- the map: stations and lines (viewBox 1480 × 1000) ---------- */
+// id: [cx, cy, w, h, flow, name, sub]
+const ST = {
+  users:    [150, 70, 200, 50, 'ask', 'Najm staff', '3 user groups'],
+  ui:       [420, 70, 168, 50, 'ask', 'Chat app', 'agent-bricks-sanad-cs'],
+  hitl:     [150, 200, 168, 50, 'write', 'Approval pause', 'human-in-the-loop'],
+  sup:      [420, 200, 168, 50, 'ask', 'Supervisor', 'routes · combines'],
+  fmt:      [630, 200, 168, 50, 'ask', 'Answer check', 'StructuredAnswer'],
+  mem:      [850, 200, 168, 50, 'ask', 'Memory · sessions', 'sanad-memory'],
+  cs:       [420, 360, 168, 50, 'ask', 'Customer Service', 'billing · orders'],
+  desk:     [640, 360, 168, 50, 'ask', 'Service Desk', 'tickets · KB'],
+  ops:      [860, 360, 168, 50, 'ask', 'Ops Analytics', 'Genie agent'],
+  mcp:      [150, 500, 190, 50, 'write', 'Najm systems', 'MCP · CRM ERP ITSM Teams'],
+  ucf:      [390, 500, 168, 50, 'data', 'UC functions', 'get_invoices +5'],
+  search:   [630, 500, 168, 50, 'docs', 'Policy search', 'search_policies'],
+  genie:    [860, 500, 168, 50, 'data', 'Genie SQL', 'question → SQL'],
+  job:      [300, 668, 130, 34, 'data', 'Doorbell', 'job sanad_ingest', 'small'],
+  gen:      [100, 730, 140, 50, 'data', 'Data generator', 'generate.py'],
+  landing:  [290, 730, 140, 50, 'data', 'Mailbox', 'bronze.landing'],
+  bronze:   [480, 730, 140, 50, 'data', 'Bronze', '6 tables · text'],
+  silver:   [670, 730, 140, 50, 'data', 'Silver', 'typed · checked'],
+  gold:     [860, 730, 160, 96, 'data', 'Gold', ''],
+  corpus:   [100, 905, 140, 50, 'docs', '30 documents', 'policies · KB'],
+  docvol:   [290, 905, 140, 50, 'docs', 'Docs volume', 'sanad.ai.docs'],
+  parsed:   [480, 905, 140, 50, 'docs', 'Parsed text', 'ai_parse_document'],
+  chunks:   [670, 905, 140, 50, 'docs', 'Chunks', 'ai.chunks'],
+  index:    [860, 905, 160, 50, 'docs', 'Search index', 'ai.chunks_index'],
+  gw:       [1110, 130, 200, 56, 'ask', 'Model gateway', 'sanad_agent_model'],
+  primary:  [1360, 88, 170, 44, 'ask', 'gpt-oss-120b', 'primary', 'small'],
+  fallback: [1360, 172, 170, 44, 'ask', 'Llama 3.3 70B', 'if primary fails', 'small'],
+  mlflow:   [1210, 325, 300, 56, 'q', 'MLflow 3', 'traces · prompts · feedback'],
+  cases:    [1100, 450, 190, 50, 'q', 'Exam questions', 'evals/cases.py'],
+  evaluate: [1340, 450, 190, 50, 'q', 'Exam run', 'genai.evaluate'],
+  ci:       [1100, 565, 190, 50, 'q', 'CI on push', 'ci.yml'],
+  gate:     [1340, 565, 190, 50, 'q', 'Gate', 'pass or fail'],
+  deploy:   [1100, 680, 190, 50, 'q', 'Deploy', 'bundle · agentbricks'],
+  opstables:[1100, 810, 190, 50, 'q', 'Metric tables', 'sanad.ops'],
+  refresh:  [1340, 810, 190, 50, 'q', 'Refresh metrics', 'refresh_metrics.py'],
+  dash:     [1100, 920, 190, 50, 'q', 'Success dashboard', 'Sanad success metrics'],
+};
+// id: [path, flow, style, from, to]; from/to default to the two halves of the id
+const ED = {
+  'users-ui':      ['M250,70 H336', 'ask'],
+  'ui-sup':        ['M405,95 V175', 'ask'],
+  'sup-hitl':      ['M336,200 H234', 'write'],
+  'hitl-ui':       ['M180,175 V122 H380 V95', 'write'],
+  'hitl-mcp':      ['M150,225 V475', 'write'],
+  'sup-fmt':       ['M504,200 H546', 'ask'],
+  'fmt-ui':        ['M630,175 V80 H504', 'ask'],
+  'sup-mem':       ['M480,225 V255 H830 V225', 'ask'],
+  'sup-cs':        ['M420,225 V335', 'ask'],
+  'sup-desk':      ['M445,225 V300 H630 V335', 'ask'],
+  'sup-ops':       ['M465,225 V275 H870 V335', 'ask'],
+  'sup-gw':        ['M455,175 V135 H1010', 'ask'],
+  'gw-primary':    ['M1210,120 H1240 V88 H1275', 'ask'],
+  'gw-fallback':   ['M1210,140 H1240 V172 H1275', 'ask', 'thin'],
+  'search-index':  ['M640,525 V592 H760 V840 H880 V880', 'docs'],
+  'cs-ucf':        ['M400,385 V475', 'ask'],
+  'cs-search':     ['M440,385 V430 H610 V475', 'ask'],
+  'desk-search':   ['M650,385 V475', 'ask'],
+  'desk-ucf':      ['M580,385 V450 H420 V475', 'ask'],
+  'ops-genie':     ['M860,385 V475', 'ask'],
+  'ucf-gold':      ['M400,525 V612 H830 V682', 'data'],
+  'ucf-silver':    ['M380,525 V620 H670 V705', 'data'],
+  'genie-gold':    ['M860,525 V682', 'data'],
+  'gen-landing':   ['M170,730 H220', 'data', 'manual'],
+  'landing-bronze':['M360,730 H410', 'data'],
+  'landing-job':   ['M290,705 V685', 'data'],
+  'job-pipe':      ['M365,668 H398', 'data', '', 'job', 'bronze'],
+  'bronze-silver': ['M550,730 H600', 'data'],
+  'silver-gold':   ['M740,730 H780', 'data'],
+  'corpus-docvol': ['M170,905 H220', 'docs', 'manual'],
+  'docvol-parsed': ['M360,905 H410', 'docs', 'manual'],
+  'parsed-chunks': ['M550,905 H600', 'docs'],
+  'chunks-index':  ['M740,905 H780', 'docs', 'manual'],
+  'spans':         ['M962,325 H1060', 'q', '', null, 'mlflow'],
+  'thumbs':        ['M504,55 H968 V305 H1060', 'q', '', 'ui', 'mlflow'],
+  'cases-evaluate':['M1195,450 H1245', 'q'],
+  'evaluate-mlflow':['M1340,425 V353', 'q'],
+  'mlflow-cases':  ['M1100,353 V425', 'q'],
+  'evaluate-gate': ['M1340,475 V540', 'q'],
+  'ci-gate':       ['M1195,565 H1245', 'q', 'notyet'],
+  'gate-deploy':   ['M1340,590 V680 H1195', 'q', 'notyet'],
+  'dep-agents':    ['M1005,680 H972 V395 H962', 'q', 'manual', 'deploy', null],
+  'dep-lake':      ['M1005,680 H972 V760 H954', 'q', 'manual', 'deploy', null],
+  'mlflow-refresh':['M1360,325 H1452 V810 H1435', 'q', 'manual'],
+  'refresh-opstables':['M1245,810 H1195', 'q', 'manual'],
+  'opstables-dash':['M1100,835 V895', 'q'],
+};
+// [x, y, w, h, flow, label, id]
+const ZONES = [
+  [20, 20, 940, 100, 'ask', 'People'],
+  [20, 140, 940, 270, 'ask', 'Agents · Agent Runtime on Databricks Apps'],
+  [20, 428, 940, 130, 'ask', 'Tools · UC functions, AI Search, Genie, MCP'],
+  [20, 636, 940, 354, 'data', 'Lakehouse · catalog sanad'],
+  [398, 646, 556, 150, 'sub', 'pipeline sanad_medallion'],
+  [980, 20, 485, 230, 'ask', 'Model gateway · Unity AI Gateway'],
+  [980, 270, 485, 720, 'q', 'Quality loop · MLflow, evals, CI, monitoring'],
+];
+// [text, x, y, anchor, edge]
+const LABELS = [
+  ['ask', 293, 62, 'middle', 'users-ui'],
+  ['approve?', 282, 115, 'middle', 'hitl-ui'],
+  ['after approval', 160, 330, 'start', 'hitl-mcp'],
+  ['Answer JSON', 640, 158, 'start', 'fmt-ui'],
+  ['every model call', 760, 128, 'middle', 'sup-gw'],
+  ['👍 👎', 760, 48, 'middle', 'thumbs'],
+  ['by hand', 195, 721, 'middle', 'gen-landing'],
+  ['Auto Loader', 385, 773, 'middle', 'landing-bronze'],
+  ['file lands', 298, 699, 'start', 'landing-job'],
+  ['by hand', 195, 896, 'middle', 'corpus-docvol'],
+  ['by hand', 385, 896, 'middle', 'docvol-parsed'],
+  ['sync', 760, 896, 'middle', 'chunks-index'],
+  ['hybrid search', 648, 572, 'start', 'search-index'],
+  ['SQL', 868, 600, 'start', 'genie-gold'],
+  ['spans', 1011, 316, 'middle', 'spans'],
+  ['👎 → new case', 1108, 394, 'start', 'mlflow-cases'],
+  ['runs + traces', 1332, 394, 'end', 'evaluate-mlflow'],
+  ['scores', 1348, 512, 'start', 'evaluate-gate'],
+  ['red-team', 1220, 554, 'middle', 'ci-gate'],
+  ['pass → deploy job', 1268, 671, 'middle', 'gate-deploy'],
+  ['by hand', 1220, 801, 'middle', 'refresh-opstables'],
+];
+// [text, x, y, anchor, edge]  (things that exist only in part)
+const TAGS = [
+  ['not yet: no CI secrets', 1330, 630, 'end', 'gate-deploy'],
+  ['deployed app: no spans yet', 1215, 372, 'middle', 'spans'],
+];
+
+/* ---------- the story ---------- */
+const ACTS = { start: ['Start', 'gov'], data: ['The data', 'data'], ask: ['The question', 'ask'], q: ['Quality', 'q'], end: ['Recap', 'clue'] };
+const ALL = [0, 0, 1480, 1000];
+
+const CH = [
+{ id: 'overview', act: 'start', title: 'Sanad in one picture', view: ALL,
+  plain: 'Sanad is an assistant for staff at Najm Supply Co., a made-up distributor in Riyadh. Staff ask questions in a chat app. Three expert agents answer from the company’s data and policies, and nothing is changed without a person saying yes.',
+  beats: [
+    { t: 'Read the map two ways. Data is built from the bottom up: generator, bronze, silver, gold. Questions flow from the top down: chat, supervisor, experts, tools. The right side is how we know it works.' },
+    { t: 'The red dot is our clue: Al-Faris Trading was billed twice for one order. We follow it through every part of the system, from the moment it is planted to the exam that checks the agent finds it.',
+      on: ['gen', 'gold', 'ucf', 'cs', 'ui', 'hitl', 'cases'], run: [['@gen:clue']] },
+  ],
+  real: [
+    ['account_managers · ops_managers · it_support', 'the three user groups'],
+    ['Supervisor + Customer Service, Ops Analytics, Service Desk', 'one receptionist, three experts'],
+    ['catalog sanad: bronze, silver, gold, ai, ops', 'where everything lives in Unity Catalog'],
+  ],
+  ex: `<h3>Three experts, one receptionist</h3>
+<div class="tablewrap"><table><thead><tr><th>Expert</th><th>Asked by</th><th>Example question</th></tr></thead><tbody>
+<tr><td>Customer Service</td><td>account managers</td><td>Why was Al-Faris Trading invoiced twice in September, and is their shipment late?</td></tr>
+<tr><td>Ops Analytics</td><td>ops managers</td><td>Which region had the most late deliveries last quarter, and why?</td></tr>
+<tr><td>Service Desk</td><td>IT support</td><td>VPN keeps dropping since Monday’s update</td></tr>
+</tbody></table></div>` },
+
+{ id: 'clues', act: 'data', title: 'Planting the clues', view: [0, 600, 980, 400],
+  plain: 'Think of a film set with clues hidden on purpose. We generate a fake company, then plant three problems in it. Because we planted them, we know the right answers, and the exams later check that the agents find them.',
+  beats: [
+    { t: 'One script writes the whole company: 2,000 customer accounts, 50,000 orders, 50,001 invoices, 50,000 shipments and 10,071 IT tickets. The same seed always gives the same files.', on: ['gen'], run: [['@gen:data']] },
+    { t: 'Clue 1: Al-Faris Trading’s September order is invoiced a second time, 4 days later, for the same SAR 1,440.71. The two invoices are INV-027711 and INV-050001, both on order ORD-027711.', on: ['gen'], run: [['@gen:clue']] },
+    { t: 'Clue 2: from July to September 2026, Red Sea Cargo delivers 6 in 10 of its Jeddah shipments late. Clue 3: a VPN update on Monday 19 October 2026 brings 30, 20, 12, 6 and 3 tickets that week.', on: ['gen'], run: [['@gen:data']] },
+  ],
+  real: [
+    ['data_gen/generate.py --seed 42', 'writes CSV and JSON-lines files for CRM, ERP and ITSM'],
+    ['seed_problems()', 'plants the three clues'],
+    ['tests/test_data_gen.py', 'fails if a clue goes missing'],
+  ],
+  ex: `<h3>The three planted clues</h3>
+<div class="tablewrap"><table><thead><tr><th>Clue</th><th>Ends up in</th><th>Found by</th></tr></thead><tbody>
+<tr class="clue-row"><td>Al-Faris Trading billed twice: INV-027711 and INV-050001, SAR 1,440.71 each</td><td><code>gold.invoice_issues</code></td><td>Customer Service</td></tr>
+<tr><td>Red Sea Cargo late in Jeddah, Q3 2026</td><td><code>gold.delivery_sla_by_region</code></td><td>Ops Analytics</td></tr>
+<tr><td>VPN tickets after the 19 Oct update</td><td><code>gold.ticket_trends</code></td><td>Service Desk</td></tr>
+</tbody></table></div>` },
+
+{ id: 'ingest', act: 'data', title: 'Mailbox and doorbell', view: [10, 600, 620, 240],
+  plain: 'The landing volume is a mailbox. Files are dropped in by hand. A doorbell, the file-arrival trigger, rings when new mail arrives, and the job starts the pipeline. Nobody presses a start button.',
+  beats: [
+    { t: 'The files are uploaded by hand into the volume /Volumes/sanad/bronze/landing. The dashed line means a person does this step.', run: [['gen-landing:data', 'd350|gen-landing:clue']] },
+    { t: 'The job sanad_ingest watches the mailbox. When a file lands, it waits until the folder has been quiet for 60 seconds, then runs the pipeline sanad_medallion.', run: [['landing-job:data'], ['job-pipe:data']] },
+    { t: 'Measured once: the pipeline waited 4 min 12 s for serverless compute to start, then ran for 1 minute. That is the price of the cheaper STANDARD mode.', on: ['job', 'bronze', 'landing'] },
+  ],
+  real: [
+    ['/Volumes/sanad/bronze/landing', 'the mailbox (a Unity Catalog volume)'],
+    ['job sanad_ingest · file_arrival', 'wait_after_last_change_seconds: 60'],
+    ['pipeline sanad_medallion', 'serverless, triggered, not continuous'],
+    ['docs/adr/0002-trigger-pipeline-on-file-arrival.md', 'why a doorbell and not an alarm clock'],
+  ],
+  ex: `<h3>From file to gold</h3>
+<ol class="steps"><li><b>File lands</b> in the volume (by hand)</li><li><b>60 s of quiet</b>, then the trigger fires</li><li><b>4 min 12 s</b> waiting for compute</li><li><b>1 min</b> pipeline run, and gold is current</li></ol>` },
+
+{ id: 'medallion', act: 'data', title: 'Bronze, silver, gold', view: [200, 600, 780, 240],
+  plain: 'Bronze is a diary: every line written down exactly as it arrived, as text. Silver is a cleaned copy with real types and quality checks. Gold is a whiteboard: business answers, rewritten from silver on every run.',
+  beats: [
+    { t: 'Auto Loader is a clerk with a list of letters already opened, so each run reads only new files. Six bronze tables keep every column as a string, plus the file name and load time.', run: [['landing-bronze:data', 'd350|landing-bronze:clue']] },
+    { t: 'Silver converts types with TRY_CAST, so a bad value becomes NULL instead of crashing the run. Then expectations decide: no id or an unreadable amount or date is dropped; a negative amount or a future date is kept with a warning.', run: [['bronze-silver:data', 'd350|bronze-silver:clue']] },
+    { t: 'Gold has four materialized views. The duplicate lands in gold.invoice_issues, which flags every order with two or more invoices. Silver keeps duplicates on purpose, so gold can see them.', run: [['silver-gold:data', 'd350|silver-gold:clue']] },
+  ],
+  real: [
+    ['bronze.crm_accounts … bronze.itsm_tickets', '6 streaming tables, Auto Loader (cloudFiles)'],
+    ['silver.invoices · silver.shipments · …', '6 streaming tables with @dp.expect rules'],
+    ['gold.invoice_issues · delivery_sla_by_region · ticket_trends · customer_360', '4 materialized views'],
+    ['pipelines/transformations/{bronze,silver,gold}.py', 'the code'],
+  ],
+  ex: `<h3>Silver’s rules for invoices</h3>
+<div class="tablewrap"><table><thead><tr><th>Rule</th><th>If broken</th></tr></thead><tbody>
+<tr><td><code>has_invoice_id</code>, <code>readable_amount</code>, <code>readable_date</code></td><td>row dropped</td></tr>
+<tr><td><code>positive_amount</code>, <code>not_in_future</code></td><td>row kept, warning counted</td></tr>
+</tbody></table></div>
+<p class="note">Broken on purpose: a 5-row file of bad invoices gave 5 rows in bronze and 2 in silver, the two that only warn.</p>
+<h3>Where the clue lands</h3>
+<div class="tablewrap"><table class="mono"><thead><tr><th>invoice_id</th><th>order_id</th><th>amount_sar</th><th>issue_type</th></tr></thead><tbody>
+<tr class="clue-row"><td>INV-027711</td><td>ORD-027711</td><td>1440.71</td><td>duplicate</td></tr>
+<tr class="clue-row"><td>INV-050001</td><td>ORD-027711</td><td>1440.71</td><td>duplicate</td></tr>
+</tbody></table></div>` },
+
+{ id: 'governance', act: 'data', title: 'Keycards and frosted glass', view: [0, 420, 980, 420],
+  plain: 'Unity Catalog works like a building with keycards. Each group’s card opens only some rooms (grants). One room shows each account manager only their own region (row filter). Contact details sit behind frosted glass (column mask).',
+  beats: [
+    { t: 'Every read from a tool passes this checkpoint. Agents never get raw table access. They call tools, and the tools run as the person asking, so the person’s own permissions apply.',
+      on: ['band'], run: [['ucf-gold:ask', 'ucf-silver:ask', 'genie-gold:ask', 'search-index:ask']] },
+    { t: '13 grants give the three groups read access to gold only. Nobody gets bronze, silver or ops. In gold.customer_360, account managers see only their own region’s customers.',
+      on: ['band', 'gold'], run: [['ucf-gold<:data']] },
+    { t: 'mask_pii shows *** for contact email and phone unless the reader is an account manager. 9 tags mark PII columns and confidential tables, and audit.sql uses them with lineage to show who read PII.',
+      on: ['band', 'silver', 'gold'], run: [['ucf-silver<:data']] },
+  ],
+  real: [
+    ['governance/setup.sql', 'GRANTs, sanad.ops.mask_pii, sanad.ops.region_filter, SET TAG pii / confidential'],
+    ['governance/audit.sql', 'PII tables by tag, then system.access.table_lineage'],
+    ['docs/adr/0004-run-tools-as-the-asking-user.md', 'tool bindings use auth = "user"'],
+  ],
+  ex: `<h3>Proof: one user, three group setups</h3>
+<div class="tablewrap"><table><thead><tr><th>Groups</th><th>Rows in customer_360</th><th>Email in silver.contacts</th></tr></thead><tbody>
+<tr><td>none</td><td>0</td><td><code>***</code></td></tr>
+<tr><td>account_managers (Jeddah)</td><td>421, Jeddah only</td><td>real</td></tr>
+<tr><td>+ ops_managers</td><td>2,000, all 5 regions</td><td>real</td></tr>
+</tbody></table></div>
+<p class="note">Grants: account_managers read customer_360 and delivery_sla_by_region; ops_managers read all four gold tables; it_support reads ticket_trends.</p>` },
+
+{ id: 'documents', act: 'data', title: 'Books into index cards', view: [0, 470, 980, 520],
+  plain: 'Policies and how-to articles are books. To find the right page fast, we cut each book into index cards and file them in a search index. We tested three ways of cutting and kept the one that found the right card most often.',
+  beats: [
+    { t: '30 documents (10 policies, 20 knowledge-base articles) are rendered to PDF and uploaded by hand. ai_parse_document reads each PDF back into text.', run: [['corpus-docvol:docs'], ['docvol-parsed:docs']] },
+    { t: 'chunks.sql cuts the text three ways into sanad.ai.chunks: whole documents, sections, and fixed 60-word windows. Each card records its audience, so a search can be limited to a department.', run: [['parsed-chunks:docs']] },
+    { t: 'The index sanad.ai.chunks_index on endpoint sanad-search turns each card into an embedding and syncs from the chunks table. search_policies runs a hybrid search, meaning plus exact words, and returns the top 5.', run: [['chunks-index:docs'], ['search-index:ask'], ['search-index<:docs']] },
+    { t: 'AI Search has no row or column security, so retrieval passes the user’s department as a filter instead. That is one of the six design rules.', on: ['search', 'index', 'e:search-index'] },
+  ],
+  real: [
+    ['retrieval/build_corpus.py', 'Markdown → PDF'],
+    ['retrieval/chunks.sql', 'ai_parse_document, ai_prep_search, three chunk strategies'],
+    ['sanad.ai.chunks_index (DELTA_SYNC)', 'databricks-gte-large-en embeddings, HYBRID query'],
+    ['retrieval/evaluate.py + docs/adr/0003', '40 questions; the whole-document cut won'],
+  ],
+  ex: `<h3>Three ways to cut, one winner</h3>
+<div class="tablewrap"><table><thead><tr><th>Cut</th><th>Cards</th><th>recall@5</th><th>MRR</th></tr></thead><tbody>
+<tr class="win"><td>whole document</td><td>30</td><td>1.00</td><td>0.93</td></tr>
+<tr><td>section</td><td>103</td><td>0.93</td><td>0.82</td></tr>
+<tr><td>fixed 60 words</td><td>99</td><td>0.93</td><td>0.81</td></tr>
+</tbody></table></div>
+<p class="note">recall@5: how often the right card is in the top 5. MRR: how close to the top it is, where 1.00 means always first.</p>` },
+
+{ id: 'question', act: 'ask', title: 'A question arrives', view: [0, 0, 1480, 430],
+  plain: 'The supervisor is a receptionist. It reads the question, decides which expert should handle it, and puts the answers together. Every call to a language model goes through one gateway, like a single front door with a guard.',
+  beats: [
+    { t: 'An account manager types the question. The chat app sends it to the agent with POST /api/invocations and streams the reply back as it is written.', run: [['users-ui:ask'], ['ui-sup:ask']] },
+    { t: 'The supervisor loads its instructions, sanad.prompts.supervisor@production, from the MLflow Prompt Registry. Changing a prompt means moving that alias, with no redeploy.', run: [['~mlflow>sup:q']] },
+    { t: 'To think, the supervisor calls a model through the gateway. The gateway uses gpt-oss-120b, switches to Llama 3.3 70B if that fails, applies rate limits and logs every call.', run: [['sup-gw:ask'], ['gw-primary:ask'], ['gw-primary<:ask'], ['sup-gw<:ask']] },
+    { t: 'The model sees a question about one customer, so the supervisor calls the customer_service specialist, which it uses as a tool.', run: [['sup-cs:ask']] },
+  ],
+  real: [
+    ['agent/ui/app.js → POST /api/invocations', 'streaming request from the chat app'],
+    ['agent/agent/agent.py', 'create_agent: the supervisor and its tools'],
+    ['prompts:/sanad.prompts.supervisor@production', 'the prompt, loaded on every turn'],
+    ['sanad.ai.sanad_agent_model', 'the agent’s own Unity AI Gateway model service'],
+    ['docs/adr/0005-supervisor-calls-specialists-as-tools.md', 'why specialists are tools'],
+  ],
+  ex: `<div class="chat"><div class="who">Account manager</div><p>Why was Al-Faris Trading invoiced twice in September, and is their shipment late?</p></div>
+<h3>The gateway’s rules</h3>
+<ul class="kv"><li><span>Primary model</span><code>gpt-oss-120b</code></li><li><span>If it fails</span><code>Llama 3.3 70B</code></li><li><span>The app, per minute</span><b>120 calls</b></li><li><span>The app, per hour</span><b>1M tokens</b></li><li><span>Each user, per minute</span><b>30 calls</b></li><li><span>Every call logged to</span><code>sanad_agent_model_payload</code></li></ul>` },
+
+{ id: 'specialist', act: 'ask', title: 'The specialist digs', view: [180, 140, 800, 720],
+  plain: 'The Customer Service specialist is an expert with a keycard, and the keycard is the user’s own. It looks things up with small, typed tools. If the user can’t see a customer, neither can the agent.',
+  beats: [
+    { t: 'get_customer_summary(\'Al-Faris Trading\') finds account ACC-00001 in gold.customer_360. The region row filter checks the person asking.', run: [['cs-ucf:ask'], ['ucf-gold:ask'], ['ucf-gold<:data'], ['cs-ucf<:data']] },
+    { t: 'get_invoices(\'ACC-00001\') reads silver.invoices joined to gold.invoice_issues and returns both invoices, flagged duplicate. This is where the clue comes back up.', run: [['cs-ucf:ask'], ['ucf-silver:ask', 'ucf-gold:ask'], ['ucf-silver<:data', 'ucf-gold<:clue'], ['cs-ucf<:clue']] },
+    { t: 'get_shipment_status(\'ORD-027711\') checks the delivery. The prompt requires this call, so the answer about lateness comes from data, not a guess.', run: [['cs-ucf:ask'], ['ucf-silver:ask'], ['ucf-silver<:data'], ['cs-ucf<:data']] },
+    { t: 'A flagged record needs its policy, so search_policies finds fin-duplicate-invoices in the search index.', run: [['cs-search:ask'], ['search-index:ask'], ['search-index<:docs'], ['cs-search<:docs']] },
+    { t: 'Each of these calls is written down as a span in an MLflow trace, so later you can see exactly what the agent looked up and in what order.', view: [180, 100, 1300, 700],
+      run: [['~cs>mlflow:q', 'd250|~ucf>mlflow:q', 'd500|~search>mlflow:q']] },
+  ],
+  real: [
+    ['sanad.ai.get_customer_summary · get_invoices · get_invoice · get_shipment_status', 'UC functions in tools/functions.sql'],
+    ['sanad.ai.search_policies', 'vector_search() on chunks_index, runs as the caller'],
+    ['agent/agent.toml: auth = "user"', 'tools run as the person asking'],
+  ],
+  ex: `<h3>What the specialist looked up</h3>
+<ol class="calls">
+<li><code>get_customer_summary('Al-Faris Trading')</code><span>→ ACC-00001, region Abha</span></li>
+<li class="clue-row"><code>get_invoices('ACC-00001')</code><span>→ INV-027711 and INV-050001, flagged duplicate</span></li>
+<li><code>get_shipment_status('ORD-027711')</code><span>→ the order’s delivery status</span></li>
+<li><code>search_policies(…)</code><span>→ fin-duplicate-invoices</span></li>
+</ol>
+<p class="note">An account manager for another region would get 0 rows for Al-Faris, because the row filter checks them, not the agent.</p>` },
+
+{ id: 'answer', act: 'ask', title: 'A checked answer', view: [0, 0, 980, 420],
+  plain: 'Before the answer goes out, a proof-reader checks its shape. Every answer has the same form: the text, the sources it relied on, how sure it is, and what should happen next. An answer with no sources must say it is unsure.',
+  beats: [
+    { t: 'The specialist hands its findings back, and the supervisor writes the reply.', run: [['sup-cs<:clue']] },
+    { t: 'StructuredAnswer makes one more model call, with no tools, that must return the Answer JSON. If the output doesn’t fit, it retries once with the error. If that fails too, the user still gets the reply, marked “not checked”.', run: [['sup-fmt:clue']] },
+    { t: 'Code adds every record id a tool returned this turn to the citations, then the answer streams to the chat with its trace id. The trace id switches on the 👍 👎 buttons.', run: [['fmt-ui:clue']] },
+  ],
+  real: [
+    ['agent/agent/answer.py', 'StructuredAnswer, the retry and the fallback, FIXED_REPLY'],
+    ['agent/agent/schema.py', 'Answer: answer, citations, confidence, next_action'],
+    ['citations: document · record · query', 'a policy, a database row, or a Genie query link'],
+  ],
+  ex: `<h3>The answer object (abridged)</h3>
+<pre>{
+  "answer": "INV-027711 and INV-050001 both bill
+             order ORD-027711 for SAR 1,440.71 …",
+  "citations": [
+    {"source": "record",   "ref": "INV-027711"},
+    {"source": "record",   "ref": "INV-050001"},
+    {"source": "record",   "ref": "ORD-027711"},
+    {"source": "document", "ref": "fin-duplicate-invoices"}
+  ],
+  "confidence": "high",
+  "next_action": "draft_credit_note"
+}</pre>
+<p class="note">next_action is one of none, draft_credit_note, open_case, open_ticket, ask_user, out_of_scope, decline_memory. For the last two, code writes the reply, not the model.</p>` },
+
+{ id: 'approval', act: 'ask', title: 'Writes wait for a human', view: [0, 0, 980, 560],
+  plain: 'Reading is free; changing things needs a signature. When the agent wants to create a credit note, a ticket, a case or a Teams post, the run pauses and the person sees exactly what will happen. Nothing is written until they press Approve.',
+  beats: [
+    { t: 'The user asks: “Draft a credit note for the duplicate.” The supervisor checks the amount with get_invoice(\'INV-050001\') and proposes create_credit_note for SAR 1,440.71.', run: [['users-ui:ask'], ['ui-sup:ask'], ['sup-cs:ask'], ['sup-cs<:clue']] },
+    { t: 'HumanInTheLoopMiddleware stops the graph and saves a checkpoint. The chat shows an approval card. Every Najm-systems tool that isn’t a get_* read is gated: approve, edit or reject.', run: [['sup-hitl:write'], ['hitl-ui:write']] },
+    { t: 'On Approve, the run resumes from the checkpoint and calls create_credit_note on the Najm systems MCP server. An Idempotency-Key makes sure a retry can’t create a second note.', run: [['hitl-ui<:write'], ['hitl-mcp:write']] },
+    { t: 'The mock ERP saves credit note CN-000001 as awaiting_approval, for the regional sales manager, because of its amount. On Reject, the tool never runs and the agent says so.', run: [['hitl-mcp<:write']] },
+  ],
+  real: [
+    ['HumanInTheLoopMiddleware', 'pauses the LangGraph run before a write'],
+    ['mock_systems/mcp_server.py', 'create_credit_note, create_ticket, create_case, post_teams_message'],
+    ['mock_systems/api.py', 'idempotency, retries, the approver by amount'],
+    ['docs/adr/0006-mock-systems-behind-a-custom-mcp-app.md', 'why the mock systems speak MCP'],
+  ],
+  ex: `<div class="approve"><div class="who">Approval needed · example</div><p>Draft a credit note of SAR 1,440.71 for INV-050001 (DUP: duplicate invoice)?</p><div class="btns"><span class="btn yes">Approve</span><span class="btn">Reject</span></div></div>
+<h3>Who signs it in the ERP</h3>
+<div class="tablewrap"><table><tbody>
+<tr><td>up to SAR 1,000</td><td>team lead</td></tr>
+<tr class="clue-row"><td>up to SAR 5,000</td><td>regional sales manager</td></tr>
+<tr><td>above SAR 5,000</td><td>finance manager</td></tr>
+<tr><td>above SAR 50,000</td><td>finance manager and CFO</td></tr>
+</tbody></table></div>` },
+
+{ id: 'experts', act: 'ask', title: 'The other two experts', view: [0, 140, 980, 700],
+  plain: 'Ops Analytics answers questions about numbers by writing SQL for you. Service Desk handles IT trouble. Memory remembers only how you like things, never data from the tools.',
+  beats: [
+    { t: '“Which region had the most late deliveries last quarter, and why?” goes to Ops Analytics, a Genie agent over gold.delivery_sla_by_region. It writes SQL with the rule late rate = SUM(late) / SUM(delivered), and the answer cites a link that opens that SQL.',
+      run: [['sup-ops:ask'], ['ops-genie:ask'], ['genie-gold:ask'], ['genie-gold<:data'], ['ops-genie<:data'], ['sup-ops<:data']] },
+    { t: '“VPN keeps dropping since Monday’s update” goes to Service Desk. get_ticket_trend(\'vpn\') compares the busiest days with a normal day, and the knowledge-base search finds the fix article.',
+      run: [['sup-desk:ask'], ['desk-ucf:ask', 'desk-search:ask'], ['desk-ucf<:data', 'desk-search<:docs'], ['sup-desk<:data']] },
+    { t: 'Opening a ticket is a write, so it takes the same approval path as the credit note. Memory, sanad-memory, keeps preferences like “answer in short bullets”.',
+      run: [['sup-mem:ask'], ['sup-hitl:write']] },
+  ],
+  real: [
+    ['genie/ops_analytics.geniespace.json', 'Genie agent “Sanad Ops Analytics”, deployed by the bundle'],
+    ['sanad.ai.get_ticket_trend', 'busiest days against a typical day'],
+    ['sanad-memory · sanad-sessions', 'memory and session stores'],
+  ],
+  ex: `<div class="mini"><h3>Ops Analytics</h3><p class="q">Which region had the most late deliveries last quarter, and why?</p><p>Jeddah: 16.2% late in Q3 2026, under 2% everywhere else. Why: Red Sea Cargo was late on 381 of its 642 Jeddah deliveries.</p></div>
+<div class="mini"><h3>Service Desk</h3><p class="q">VPN keeps dropping since Monday’s update</p><p>30 VPN tickets on 19 October against about 2 on a normal day. The article kb-vpn-drops-after-update has the fix. A new ticket needs approval.</p></div>
+<div class="mini"><h3>Memory</h3><p>Keeps your role, region and how you like answers. Never customer, invoice or ticket data, because memory isn’t protected by Unity Catalog permissions.</p></div>` },
+
+{ id: 'mlflow', act: 'q', title: 'MLflow, the flight recorder', view: [300, 0, 1180, 560],
+  plain: 'MLflow is the black box on a plane. Every turn writes a trace: each model call, tool call and search, in order, with timings. Prompts are kept there too, under version aliases, and user thumbs are pinned to the trace they rate.',
+  beats: [
+    { t: 'Each turn opens one root span, invoke. Inside it are the model calls, the customer_service tool with its own nested calls, and the answer check at the end.',
+      run: [['~sup>mlflow:q', 'd200|~cs>mlflow:q', 'd400|~fmt>mlflow:q'], ['spans:q']] },
+    { t: 'A thumbs click calls mlflow.log_feedback with the name user_thumbs and the signed-in user as the source. The rating sits on the exact trace it rates.', run: [['thumbs:q']] },
+    { t: 'Prompts are versioned in the Prompt Registry. On the game day, moving supervisor@production from v13 back to v12 took about 40 seconds, with no redeploy.', run: [['~mlflow>sup:q']] },
+    { t: 'Not yet: the deployed app keeps each trace’s record and thumbs but not its spans, because this workspace can’t reach the trace storage. Full traces come from local runs and evaluation runs.', on: ['mlflow', 'e:spans'] },
+  ],
+  real: [
+    ['/Shared/agentbricks_traces/sanad-cs-…', 'the app’s trace experiment'],
+    ['start_trace(name="invoke")', 'one root span per turn (agent/agent/agent.py)'],
+    ['mlflow.log_feedback(name="user_thumbs")', 'agent/runtime/ui.py'],
+    ['prompts:/sanad.prompts.*@production', 'supervisor, customer_service, service_desk'],
+  ],
+  ex: `<h3>One turn as a trace (simplified)</h3>
+<pre>invoke
+├─ model                 supervisor
+├─ tool customer_service
+│  ├─ model
+│  ├─ get_customer_summary
+│  ├─ get_invoices
+│  ├─ get_shipment_status
+│  └─ search_policies
+├─ model                 writes the reply
+└─ StructuredAnswer.after_agent
+   feedback: user_thumbs = 👍 (HUMAN)</pre>` },
+
+{ id: 'evals', act: 'q', title: 'The exam before release', view: [960, 260, 520, 400],
+  plain: 'Before a change ships, Sanad sits an exam. The questions have known answers, thanks to the planted clues. A checklist written in code marks what must never fail, and an examiner, a judge model, marks what needs judgement.',
+  beats: [
+    { t: 'evals/cases.py holds 34 cases: 20 normal, 5 multi-step and 9 red-team attacks, such as asking for a phone number, “approve it in advance”, or an instruction hidden inside a CRM record.', run: [['cases-evaluate:q']] },
+    { t: 'run_eval.py calls mlflow.genai.evaluate, which runs the real agent on every case, four at a time, and keeps every trace in /Shared/sanad-evals.', view: [380, 140, 1100, 520],
+      run: [['~evaluate>sup:ask'], ['~sup>evaluate:q'], ['evaluate-mlflow:q']] },
+    { t: '7 code checks: right tool, cited, no PII, writes need approval, no false claims, billed tokens and latency. 4 judges, on qwen35-122b, a different model family from the agent: correctness, grounded, follows guidelines and safe.', on: ['evaluate', 'cases'] },
+    { t: 'The gate compares each score with a fixed floor and exits 1 if any fails. Run bd0fd808 passed every quality and safety floor and failed only on latency, on a slow gateway day.', run: [['evaluate-gate:q']] },
+    { t: 'Each check has a story. One run told a manager “a credit note has been drafted” when nothing had been written. The no_false_claims check was added that day, and it must score 1.0.', on: ['evaluate', 'gate'] },
+  ],
+  real: [
+    ['evals/run_eval.py', 'mlflow.genai.evaluate, the scorers, GATES full and red-team'],
+    ['evals/checks.py', 'the code checks and gate_failures'],
+    ['databricks:/system.ai.qwen35-122b-a10b', 'the judge model'],
+    ['docs/success-metrics.md', 'why each floor is where it is'],
+  ],
+  ex: `<h3>Gate check · run bd0fd808</h3><div class="bars" id="bars"></div>
+<p class="note">The black tick is the floor or ceiling. G2 was accepted with the latency miss recorded, and the 60 s ceiling stays.</p>` },
+
+{ id: 'ci', act: 'q', title: 'Shipping it', view: [900, 400, 580, 360],
+  plain: 'CI is a robot that re-runs the checks on every push. It is wired to stop a bad change before it ships, but in this repo it can only run the parts that need no Databricks login.',
+  beats: [
+    { t: 'On every push, ci.yml lints and format-checks with ruff, then runs pytest for the repo and for the agent.', on: ['ci'], run: [['@ci:q']] },
+    { t: 'Then the red-team job runs the 9 attack cases through the gate, and the deploy job runs on main only if both pass. Today both are skipped with a notice, because the repo holds no Databricks secrets.', run: [['ci-gate:q'], ['gate-deploy:q']] },
+    { t: 'So deploys are run by hand. databricks bundle deploy ships the pipeline, the ingest job, the mock systems app, both dashboards, the Genie space and the search index. agentbricks deploy ships the agent app. There is one target: dev.', view: [600, 120, 880, 760],
+      run: [['dep-agents:q', 'dep-lake:q']] },
+  ],
+  real: [
+    ['.github/workflows/ci.yml', 'jobs tests → red-team → deploy (needs: [tests, red-team])'],
+    ['databricks.yml', 'the bundle; one target, dev'],
+    ['agentbricks deploy sanad-cs', 'the agent app on Agent Runtime'],
+  ],
+  ex: `<h3>The CI pipeline</h3>
+<ol class="pipe">
+<li class="ok"><b>tests</b><span>ruff check · ruff format --check · pytest (repo and agent/)</span><em>runs on every push</em></li>
+<li class="skip"><b>red-team</b><span>starts the mock systems, then run_eval.py --only adversarial --gate red-team</span><em>skipped: no Databricks secrets</em></li>
+<li class="skip"><b>deploy</b><span>main only; bundle deploy, then agentbricks deploy</span><em>skipped: no Databricks secrets</em></li>
+</ol>
+<h3>Today, by hand</h3>
+<pre>databricks bundle deploy --profile sanad
+cd agent && agentbricks --profile sanad \\
+  deploy sanad-cs --source .</pre>
+<p class="note">Start the app’s compute first: deploy doesn’t start stopped compute.</p>` },
+
+{ id: 'loop', act: 'q', title: 'The loop closes', view: [940, 260, 540, 740],
+  plain: 'Comment cards become exam questions. When a user gives a thumbs-down, the failing question becomes a new test case, so the same mistake can’t quietly come back.',
+  beats: [
+    { t: 'A 👎 on “How many invoices are there?” showed the agent wrongly saying there was no invoice data. That conversation became the eval case fb-invoice-count, checked by a guidelines rule.', view: [380, 0, 1100, 560],
+      run: [['thumbs:q'], ['mlflow-cases:q'], ['cases-evaluate:q']] },
+    { t: 'After an eval run, refresh_metrics.py, run by hand, reads MLflow runs, gateway usage and app feedback, and writes three small tables in sanad.ops.', run: [['mlflow-refresh:q'], ['refresh-opstables:q']] },
+    { t: 'The “Sanad success metrics” dashboard shows 12 counters: 8 for quality and cost from the latest eval, and 4 for real use (questions, conversations, thumbs-up rate, feedback collected). The runbook’s alerts are checked at each refresh.', run: [['opstables-dash:q']] },
+    { t: 'Not yet: no scorers run on live production traces. Quality is measured from evaluation runs, and live use is measured from thumbs and gateway logs.', on: ['mlflow', 'evaluate', 'dash'] },
+  ],
+  real: [
+    ['evals/cases.py · fb-invoice-count', 'the case that came from a 👎'],
+    ['monitoring/refresh_metrics.py', 'eval_scores, gateway_daily, app_feedback'],
+    ['dashboards/sanad_metrics.lvdash.json', 'the success-metrics dashboard'],
+    ['docs/runbook.md', 'SLOs, alerts, triage, rollback'],
+  ],
+  ex: `<h3>A 👎 became a test</h3>
+<ol class="steps"><li>A user asks “How many invoices are there?”, and the agent wrongly says there is no invoice data</li><li>The 👎 lands on that trace as user_thumbs = false</li><li>A new case, <code>fb-invoice-count</code>, joins the exam</li><li>Every later exam asks it again</li></ol>
+<h3>What the dashboard reads</h3>
+<ul class="kv"><li><code>sanad.ops.eval_scores</code><span>one row per full eval run</span></li><li><code>sanad.ops.gateway_daily</code><span>production vs testing: calls, tokens, p90, errors</span></li><li><code>sanad.ops.app_feedback</code><span>questions, conversations, 👍 and 👎 per day</span></li></ul>` },
+
+{ id: 'recap', act: 'end', title: 'The whole journey', view: ALL,
+  plain: 'One clue, start to finish: planted in the data, cleaned into gold, read by a tool with the user’s own keycard, cited in an answer, turned into a credit note only after approval, recorded by MLflow, and checked again in every exam.',
+  beats: [
+    { t: 'Watch the red dot make the whole trip.',
+      run: [['gen-landing:clue'], ['landing-bronze:clue'], ['bronze-silver:clue'], ['silver-gold:clue'], ['ucf-gold<:clue'], ['cs-ucf<:clue'], ['sup-cs<:clue'], ['sup-fmt:clue'], ['fmt-ui:clue'],
+            ['sup-hitl:clue'], ['hitl-ui:clue'], ['hitl-ui<:clue'], ['hitl-mcp:clue'], ['~mcp>mlflow:clue'], ['mlflow-cases:clue'], ['cases-evaluate:clue'], ['evaluate-gate:clue']] },
+    { t: 'Six rules hold it together. Each one is visible on the map: one gateway door, spans flowing to MLflow, the Unity Catalog checkpoint, the approval pause, plain LangGraph code, and the department filter on search.' },
+  ],
+  real: [
+    ['docs/architecture.md', 'layers, data flows and the six rules'],
+    ['docs/agent-card.md', 'tools, limits and latest scores'],
+    ['docs/runbook.md', 'how to run it and roll it back'],
+  ],
+  ex: `<h3>The six rules</h3>
+<ol class="rules">
+<li><b>One gateway.</b> Every model call goes through Unity AI Gateway: rate limits, fallback and cost logs apply to all of them.</li>
+<li><b>Every step traced.</b> MLflow records each routing decision, tool call and search.</li>
+<li><b>No direct table access.</b> Agents call tools, and tools run under the user’s Unity Catalog permissions.</li>
+<li><b>Writes wait for a human.</b> Credit notes, tickets, cases and Teams posts pause for approval.</li>
+<li><b>Beta features are isolated.</b> Agent logic is plain LangGraph; the serving layer stays thin (ADR 0001).</li>
+<li><b>Retrieval filters by metadata.</b> AI Search has no row security, so the department is passed as a filter.</li>
+</ol>` },
+];
+
+const BARS = [ // [label, value, limit, scale max, rule]
+  ['Correctness · judge', 0.875, 0.85, 1, 'min'],
+  ['Grounded · judge', 0.955, 0.90, 1, 'min'],
+  ['Safe · judge', 1, 0.95, 1, 'min'],
+  ['Follows guidelines · judge', 1, 0.85, 1, 'min'],
+  ['Right tool · code', 0.962, 0.90, 1, 'min'],
+  ['No PII, approved writes, no false claims, cited · code', 1, 1, 1, 'min'],
+  ['Billed tokens per question (mean)', 10801, 15000, 20000, 'max'],
+  ['p90 latency, seconds', 72.3, 60, 90, 'max'],
+];
+
+/* ---------- build the SVG ---------- */
+const NS = 'http://www.w3.org/2000/svg';
+const svg = document.getElementById('map');
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function el(tag, attrs, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function text(parent, x, y, cls, s, anchor = 'middle') {
+  const t = el('text', { x, y, class: cls, 'text-anchor': anchor }, parent);
+  t.textContent = s;
+  return t;
+}
+const defs = svg.querySelector('#defs');
+for (const k of ['data', 'docs', 'ask', 'write', 'q', 'notyet']) {
+  const m = el('marker', { id: 'ar-' + k, viewBox: '0 0 10 10', refX: 8.5, refY: 5, markerWidth: 11, markerHeight: 11, markerUnits: 'userSpaceOnUse', orient: 'auto' }, defs);
+  el('path', { d: 'M0,0 L10,5 L0,10 z', class: k === 'notyet' ? 'mk notyet' : 'mk k-' + k }, m);
+}
+for (const [x, y, w, h, k, label] of ZONES) {
+  const g = el('g', { class: 'zone k-' + k }, svg.querySelector('#zones'));
+  el('rect', { x, y, width: w, height: h, rx: 14 }, g);
+  // labels go in the top layer, with a halo, so lines pass under them
+  if (k === 'sub') text(svg.querySelector('#labels'), x + w - 10, y + h - 9, 'zlabel', label, 'end');
+  else text(svg.querySelector('#labels'), x + 12, y + 19, 'zlabel', label, 'start');
+}
+const band = el('g', { id: 'band' }, svg.querySelector('#zones'));
+el('rect', { x: 20, y: 572, width: 940, height: 56, rx: 10 }, band);
+text(band, 34, 596, 'zlabel', 'Unity Catalog checks every read', 'start');
+text(band, 34, 614, 'zlabel', 'grants · row filter · column mask', 'start');
+
+const EG = {}, EL = {}, ENDS = {};
+for (const [id, [d, k, style = '', a, b]] of Object.entries(ED)) {
+  const [ha, hb] = id.split('-');
+  ENDS[id] = [a === undefined ? ha : a, b === undefined ? hb : b];
+  const g = el('g', { class: `eg k-${k} ${style}`, id: 'e-' + id }, svg.querySelector('#edges'));
+  el('path', { d, class: 'cs' }, g);
+  EL[id] = el('path', { d, class: 'ln', 'marker-end': `url(#ar-${style === 'notyet' ? 'notyet' : k})` }, g);
+  EG[id] = g;
+}
+const LB = [];
+for (const [s, x, y, anchor, edge] of LABELS) LB.push([text(svg.querySelector('#labels'), x, y, 'el', s, anchor), edge]);
+for (const [s, x, y, anchor, edge] of TAGS) LB.push([text(svg.querySelector('#labels'), x, y, 'tag', s, anchor), edge]);
+
+const SG = {};
+for (const [id, [cx, cy, w, h, k, name, sub, size]] of Object.entries(ST)) {
+  const g = el('g', { class: `st k-${k} ${size || ''}`, id: 's-' + id }, svg.querySelector('#stations'));
+  el('rect', { x: cx - w / 2, y: cy - h / 2, width: w, height: h, rx: size ? 8 : 10 }, g);
+  if (id === 'gold') {
+    text(g, cx, cy - 27, 'nm', name);
+    ['invoice_issues', 'delivery_sla_by_region', 'customer_360', 'ticket_trends'].forEach((t, i) => text(g, cx, cy - 7 + i * 15, 'sb', t));
+  } else {
+    text(g, cx, cy - (size ? 2 : 3), 'nm', name);
+    text(g, cx, cy + (size ? 11 : 14), 'sb', sub);
+  }
+  SG[id] = g;
+}
+SG.band = band;
+
+/* ---------- engine ---------- */
+const tokLayer = svg.querySelector('#tokens');
+let view = ALL.slice(), gen = 0, ci = 0, bi = 0, playing = false, exShown = null;
+const ease = p => p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+const wait = (ms, g) => new Promise(r => setTimeout(r, g === gen ? ms : 0));
+function tween(ms, fn, g) {
+  return new Promise(res => {
+    const t0 = performance.now();
+    const f = t => {
+      if (g !== gen) return res();
+      const p = Math.min(1, (t - t0) / ms);
+      fn(p);
+      p < 1 ? requestAnimationFrame(f) : res();
+    };
+    requestAnimationFrame(f);
+  });
+}
+function setView(to, g) {
+  const from = view.slice();
+  const apply = v => { view = v; svg.setAttribute('viewBox', v.join(' ')); };
+  if (reduce || from.every((v, i) => Math.abs(v - to[i]) < 1)) { apply(to.slice()); return Promise.resolve(); }
+  return tween(950, p => { const e = ease(p); apply(from.map((v, i) => v + (to[i] - v) * e)); }, g);
+}
+function parse(s) {
+  let delay = 0;
+  const m = s.match(/^d(\d+)\|/);
+  if (m) { delay = +m[1]; s = s.slice(m[0].length); }
+  const [body, kind = 'ask'] = s.split(':');
+  if (body[0] === '~') { const [from, to] = body.slice(1).split('>'); return { delay, fly: true, from, to, kind }; }
+  if (body[0] === '@') return { delay, at: body.slice(1), kind };
+  const rev = body.endsWith('<');
+  return { delay, edge: rev ? body.slice(0, -1) : body, rev, kind };
+}
+function token(kind) {
+  const g = el('g', { class: 'tok k-' + kind }, tokLayer);
+  if (kind === 'clue') el('circle', { r: 15, class: 'halo' }, g);
+  el('circle', { r: kind === 'clue' ? 8 : 6.5, class: 'dot' }, g);
+  return g;
+}
+function ping(id) {
+  const g = SG[id];
+  if (!g || reduce) return;
+  g.classList.remove('ping');
+  void g.getBBox();
+  g.classList.add('ping');
+  setTimeout(() => g.classList.remove('ping'), 820);
+}
+const dur = L => Math.max(520, Math.min(2300, L * 2.3));
+async function move(m, g) {
+  if (m.delay) await wait(m.delay, g);
+  if (g !== gen) return;
+  if (m.at) {
+    const [cx, cy, , h] = ST[m.at];
+    if (reduce) { ping(m.at); return wait(500, g); }
+    const t = token(m.kind);
+    await tween(1100, p => {
+      const s = p < 0.3 ? p / 0.3 : 1;
+      t.setAttribute('transform', `translate(${cx},${cy - h / 2 - 4}) scale(${s})`);
+      t.style.opacity = p > 0.75 ? (1 - p) / 0.25 : 1;
+    }, g);
+    t.remove(); ping(m.at); return;
+  }
+  if (m.fly) {
+    const [ax, ay] = ST[m.from], [bx, by] = ST[m.to];
+    const trail = el('line', { x1: ax, y1: ay, x2: bx, y2: by, class: 'trail k-' + m.kind }, tokLayer);
+    if (reduce) { await wait(600, g); trail.remove(); ping(m.to); return; }
+    const t = token(m.kind);
+    await tween(dur(Math.hypot(bx - ax, by - ay)), p => {
+      const e = ease(p);
+      t.setAttribute('transform', `translate(${ax + (bx - ax) * e},${ay + (by - ay) * e})`);
+    }, g);
+    t.remove(); trail.remove(); ping(m.to); return;
+  }
+  const path = EL[m.edge], eg = EG[m.edge];
+  eg.classList.add('lit');
+  if (reduce) { await wait(550, g); }
+  else {
+    const L = path.getTotalLength(), t = token(m.kind);
+    await tween(dur(L), p => {
+      const e = ease(p), pt = path.getPointAtLength((m.rev ? 1 - e : e) * L);
+      t.setAttribute('transform', `translate(${pt.x},${pt.y})`);
+    }, g);
+    t.remove();
+  }
+  eg.classList.remove('lit');
+  ping(ENDS[m.edge][m.rev ? 0 : 1]);
+}
+async function runSteps(steps, g) {
+  for (const step of steps) {
+    if (g !== gen) return;
+    await Promise.all(step.map(s => move(parse(s), g)));
+  }
+}
+function focus(beat) {
+  const on = new Set(beat.on || []);
+  for (const step of beat.run || []) for (const s of step) {
+    const m = parse(s);
+    if (m.edge) { on.add('e:' + m.edge); ENDS[m.edge].forEach(x => x && on.add(x)); }
+    else if (m.fly) { on.add(m.from); on.add(m.to); }
+    else on.add(m.at);
+  }
+  svg.classList.toggle('focusing', on.size > 0);
+  for (const id in SG) SG[id].classList.toggle('on', on.has(id));
+  for (const id in EG) EG[id].classList.toggle('on', on.has('e:' + id));
+  for (const [t, edge] of LB) t.classList.toggle('on', on.has('e:' + edge));
+}
+
+/* ---------- panel ---------- */
+const $ = id => document.getElementById(id);
+const strip = $('chapters');
+CH.forEach((ch, i) => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'k-' + ACTS[ch.act][1];
+  b.textContent = i;
+  b.title = ch.title;
+  b.setAttribute('aria-label', `Chapter ${i}: ${ch.title}`);
+  b.addEventListener('click', () => show(i, 0));
+  strip.appendChild(b);
+});
+function fillBars() {
+  const box = $('bars');
+  if (!box) return;
+  box.innerHTML = BARS.map(([lab, v, lim, max, rule]) => {
+    const pass = rule === 'min' ? v >= lim : v <= lim;
+    const shown = max === 1 ? v.toFixed(3) : v.toLocaleString('en-US');
+    const limTxt = (rule === 'min' ? '≥ ' : '≤ ') + (max === 1 ? lim.toFixed(2) : lim.toLocaleString('en-US'));
+    return `<div class="bar"><div class="lab"><span>${lab}</span><b class="${pass ? 'pass' : 'fail'}">${shown} ${pass ? '✓' : '✗'} <span class="note">(${limTxt})</span></b></div>
+      <div class="track"><div class="fill ${pass ? '' : 'fail'}" data-w="${Math.min(100, v / max * 100)}"></div><div class="floor" style="left:${lim / max * 100}%"></div></div></div>`;
+  }).join('');
+  requestAnimationFrame(() => requestAnimationFrame(() => box.querySelectorAll('.fill').forEach(f => { f.style.width = f.dataset.w + '%'; })));
+}
+function renderPanel() {
+  const ch = CH[ci], beat = ch.beats[bi], [actName, actK] = ACTS[ch.act];
+  $('panel').className = 'panel k-' + actK;
+  $('act').textContent = `Chapter ${ci} of ${CH.length - 1} · ${actName}`;
+  $('title').textContent = ch.title;
+  $('plain').textContent = ch.plain;
+  $('beat').innerHTML = '';
+  const n = document.createElement('span');
+  n.className = 'n';
+  n.textContent = `Step ${bi + 1} of ${ch.beats.length}`;
+  $('beat').append(n, beat.t);
+  $('real').innerHTML = ch.real.map(([c, s]) => `<li><code>${c}</code><span>${s}</span></li>`).join('');
+  if (exShown !== ch.id) { $('ex').innerHTML = ch.ex; exShown = ch.id; fillBars(); }
+  $('count').textContent = `${ci}.${bi + 1}`;
+  [...strip.children].forEach((b, i) => b.setAttribute('aria-current', i === ci ? 'true' : 'false'));
+  svg.setAttribute('aria-label', `Sanad system map. ${ch.title}: ${beat.t}`);
+  $('prev').disabled = ci === 0 && bi === 0;
+}
+async function show(c, b) {
+  const g = ++gen;
+  tokLayer.replaceChildren();
+  Object.values(EG).forEach(e => e.classList.remove('lit'));
+  ci = c; bi = b;
+  const ch = CH[ci], beat = ch.beats[bi];
+  renderPanel();
+  focus(beat);
+  try { if (location.hash.slice(1) !== ch.id) history.replaceState(null, '', '#' + ch.id); } catch (e) {}
+  await setView(beat.view || ch.view, g);
+  await runSteps(beat.run || [], g);
+  if (g !== gen || !playing) return;
+  await wait(Math.min(9000, Math.max(3200, 1800 + beat.t.length * 30)), g);
+  if (g === gen && playing) step(1);
+}
+function step(d) {
+  let c = ci, b = bi + d;
+  if (b >= CH[c].beats.length) { c++; b = 0; }
+  if (b < 0) { c--; b = c < 0 ? 0 : CH[c].beats.length - 1; }
+  if (c < 0) c = 0;
+  if (c >= CH.length) { setPlaying(false); return; }
+  show(c, b);
+}
+function setPlaying(p) {
+  playing = p;
+  $('play').textContent = p ? '❚❚ Pause' : '▶ Play';
+  $('play').setAttribute('aria-pressed', String(p));
+}
+$('play').addEventListener('click', () => {
+  if (playing) { setPlaying(false); return; }
+  setPlaying(true);
+  const last = ci === CH.length - 1 && bi === CH[ci].beats.length - 1;
+  last ? show(0, 0) : step(1);
+});
+$('next').addEventListener('click', () => step(1));
+$('prev').addEventListener('click', () => step(-1));
+document.addEventListener('keydown', e => {
+  if (e.altKey || e.ctrlKey || e.metaKey) return;
+  if (e.key === 'ArrowRight') { e.preventDefault(); step(1); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); step(-1); }
+  else if (e.key === ' ' && !(e.target instanceof HTMLButtonElement)) { e.preventDefault(); $('play').click(); }
+});
+const fromHash = () => Math.max(0, CH.findIndex(ch => ch.id === location.hash.slice(1)));
+window.addEventListener('hashchange', () => { const c = fromHash(); if (c !== ci) show(c, 0); });
+show(fromHash(), 0);
+</script>

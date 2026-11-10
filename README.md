@@ -36,6 +36,7 @@ A governed multi-agent copilot for **Najm Supply Co.**, a fictional B2B distribu
 
 - [Scenario and agents](docs/scenario.md): who Sanad serves, the four agents, the synthetic data
 - [Architecture](docs/architecture.md): layers, data flows, governance rules
+- [System tour](docs/system-tour.html) ([published page](https://claude.ai/artifact/6xc6qgQ2bkupSLxLGjhj8E)): an animated, chapter-by-chapter walk through ingestion, governance, retrieval, a question, approvals, MLflow, evals, CI and monitoring
 - [Agent card](docs/agent-card.md): purpose, tools, data, limits, latest eval scores
 - [Skill coverage](docs/skill-coverage.md): every JD line mapped to evidence in this repo
 - [Success metrics](docs/success-metrics.md): how each JD success measure is reported

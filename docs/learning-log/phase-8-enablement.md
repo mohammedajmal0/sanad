@@ -59,3 +59,32 @@ I must be able to defend each label. Every number in the captions comes from the
 1. Walk me through what happens, end to end, when an account manager asks why a customer was billed twice.
 2. Which parts of your system run by themselves and which still need a person, and what would you automate next?
 3. Where exactly are permissions enforced when an agent reads a table, and how would you prove it?
+
+### 2026-11-11: Consolidated learning guide in Simplified Technical English
+
+**What we built:** [sanad-learning-guide.html](sanad-learning-guide.html), one self-contained page (inline CSS and SVG, system fonts, no libraries) that puts the nine phase logs into one study guide. The same content is published as a [claude.ai page](https://claude.ai/artifact/MwdhPeXkdXECvUz8baWex4).
+- **Twelve lessons** that came back across phases, each with its rule, its reason and the tasks where it occurred.
+- **Every phase as dated task cards:** what we built, key ideas, mistakes with their owner (only where the log names one), and the decisions Claude wrote that I must defend.
+- **Six diagrams** (system map, diary against whiteboard, three locks, specialists as tools, one write end to end, the evaluation loop) and four small charts of the Phase 6 scores across the six runs, each with its floor.
+- **A mistake catalogue** by kind, numbers to know, all 138 interview questions (one exact duplicate removed) and a glossary.
+- **Two copies, one look:** the repo file is a full HTML document that opens in any browser; the published copy drops the first four wrapper lines.
+- **README** links the guide.
+
+These were written by Claude at my request; I must be able to defend them: the STE rewording, the twelve-lesson grouping, the mistake categories, and the diagrams.
+
+**Checks:** a script flagged each sentence over 25 words and each paragraph over 6 sentences (the remaining flags are false alarms on closing quotes), confirmed that every number and ID in the guide appears in a phase file, and matched the question count for each phase.
+
+**Not done:** the tracker row. The tracker belongs to another organization, and this account can't write its data.
+
+**Key concepts:**
+- **ASD-STE100 (Simplified Technical English)** is a controlled language from aerospace maintenance manuals: 20 words at most for an instruction, 25 for a description, active voice, simple tenses, one meaning for each word. Technical names stay as they are. Without the licensed dictionary, only the writing rules were applied.
+- **A derived document is a snapshot.** Three Phase 7 entries and the Phase 8 file landed while the guide was being written. The phase files stay the source, and the guide states its date.
+- **Check a rewrite by machine.** Rewording 1,400 lines by hand can change a fact. A script that looks up every number and ID in the sources catches that cheaply.
+
+**Mistakes:**
+- **Unreadable diagrams.** Claude's first draft scaled 980-pixel diagrams into the 575-pixel text column, so their labels were about 7 px. One screenshot showed it. Figures now use the full content width, and on a phone they scroll inside their frame.
+
+**Interview questions:**
+1. You consolidate many engineering logs into one guide. How do you make sure the rewrite did not change a fact?
+2. Why write technical documentation in a controlled language like Simplified Technical English, and what does it cost?
+3. A derived document and its source disagree. Which one wins, and how do you make that clear to readers?

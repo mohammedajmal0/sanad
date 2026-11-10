@@ -2,6 +2,8 @@
 
 One file per phase, named `phase-<N>-<topic>.md`. By week 8 this folder holds every concept learned, every mistake fixed and about 50 interview questions in your own words. It's the interview prep.
 
+**Consolidated guide:** [sanad-learning-guide.html](sanad-learning-guide.html) ([claude.ai page](https://claude.ai/artifact/MwdhPeXkdXECvUz8baWex4)) puts every phase into one study guide in Simplified Technical English: twelve lessons, diagrams, a mistake catalogue and all interview questions. It is a snapshot (11 Nov 2026); the phase files stay the source. Open it in a browser (GitHub shows the source). To republish it, drop the first four lines, because the page host adds its own `<!doctype>` and `<head>`.
+
 ## Phase file layout
 
 Each phase file starts with its goal, the "Read first" links from [reading-list.md](../reading-list.md) and the plan's interview questions for that phase. Entries follow below them, newest last.

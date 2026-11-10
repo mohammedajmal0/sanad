@@ -91,3 +91,29 @@ These were written by Claude at my request (the first entry's UI too, in a secon
 **Key concept:** deferring is a decision when it's written down with its cost and its fix. The cost here: a 👎 on a production answer shows *what* happened but not *how*.
 
 **Interview question:** you found that production traces are incomplete. Why might you choose not to fix it yet, and what would make you change your mind?
+
+### 2026-11-10: Success-metrics dashboard, built to be frugal
+
+**What we built:**
+- **[monitoring/refresh_metrics.py](../../monitoring/refresh_metrics.py)** writes three small tables in `sanad.ops` in 50 seconds:
+  - `eval_scores`: one row per full eval run, from `system.mlflow.runs_latest`;
+  - `gateway_daily`: model requests per day, production (the app's principal) vs testing (me), from `system.ai_gateway.usage`;
+  - `app_feedback`: questions, conversations and thumbs per day, from the app's trace records through the MLflow API.
+- **Dashboard `Sanad success metrics`** ([dashboards/sanad_metrics.lvdash.json](../../dashboards/sanad_metrics.lvdash.json), in `databricks.yml`): 12 counters, a quality trend across runs, production vs testing traffic, and an honest "not measured yet" tile for effort saved and reuse.
+- **Every query was tested before deploy.** The bundle deploy created 1 resource and changed 0 others.
+
+These were written by Claude at my request; I must be able to defend them: the three tables and their grain, the production/testing split by requester, the baseline token correction, and the tile choices.
+
+**Key concepts:**
+- **Frugal means the expensive work happens once, when I choose.** A dashboard is queries that run on every open. Pointing it at tiny summary tables instead of growing system tables makes each open nearly free, and unchanged Delta tables let the warehouse serve repeat views from its result cache. The price is staleness until the next refresh.
+- **Summaries are also a privacy boundary.** System tables hold e-mails and IP addresses; the summary tables hold counts. The dashboard can't leak what it never reads.
+- **Fix bad history where it's consumed, and say so.** The baseline run's token metric used the old, inflated count. The refresh takes it from the re-score run, by run id, with a comment, so the trend doesn't show a fake 25× improvement.
+
+**Mistakes:** the first version of `app_feedback_rows` grouped trace records by the second, not the day. That would have summed per-second distinct sessions, overcounting conversations. Caught by reading the code before the first run.
+
+**Open:** warehouse auto-stop from 10 to 5 minutes. The CLI change was blocked by the permission check, so it's left for me to do in the UI.
+
+**Interview questions:**
+1. How would you build a metrics dashboard for an agent that doesn't wake a warehouse every time someone opens it?
+2. Your system tables contain user e-mails and IP addresses. How do you build a dashboard on them without exposing those?
+3. A historical metric was measured wrongly. Do you fix it at the source, or where it's consumed? What are the trade-offs?

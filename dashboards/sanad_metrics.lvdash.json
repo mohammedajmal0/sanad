@@ -1,0 +1,828 @@
+{
+  "datasets": [
+    {
+      "name": "ds_latest",
+      "displayName": "Latest evaluation run",
+      "queryLines": [
+        "SELECT * FROM eval_scores ORDER BY started DESC LIMIT 1"
+      ]
+    },
+    {
+      "name": "ds_trend",
+      "displayName": "Quality by evaluation run",
+      "queryLines": [
+        "SELECT started, run_name, metric, value FROM eval_scores ",
+        "UNPIVOT (value FOR metric IN (correctness AS `Correctness`, grounded AS `Grounded`, ",
+        "follows_guidelines AS `Follows guidelines`, tool_choice AS `Tool choice`)) ",
+        "ORDER BY started"
+      ]
+    },
+    {
+      "name": "ds_gateway",
+      "displayName": "Model gateway per day",
+      "queryLines": [
+        "SELECT day, source, requests, tokens, p90_latency_s, error_rate FROM gateway_daily ORDER BY day"
+      ]
+    },
+    {
+      "name": "ds_app",
+      "displayName": "Production usage and feedback",
+      "queryLines": [
+        "SELECT sum(questions) AS questions, sum(conversations) AS conversations, ",
+        "sum(thumbs_up) + sum(thumbs_down) AS thumbs_given, ",
+        "sum(thumbs_up) / nullif(sum(thumbs_up) + sum(thumbs_down), 0) AS thumbs_up_rate ",
+        "FROM app_feedback WHERE source = 'production'"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "metrics",
+      "displayName": "Success metrics",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1",
+      "layout": [
+        {
+          "widget": {
+            "name": "header",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Sanad: success metrics\n",
+                "\n",
+                "The eight JD success measures, from evaluation runs, the model gateway and users' thumbs. ",
+                "Data is refreshed on demand by `monitoring/refresh_metrics.py` (about a minute of warehouse time); it holds counts only."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_correct",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_latest",
+                  "fields": [
+                    {
+                      "name": "correctness",
+                      "expression": "`correctness`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "correctness",
+                  "displayName": "Correctness",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Correctness",
+                "showDescription": true,
+                "description": "Latest evaluation run; floor 85%"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_grounded",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_latest",
+                  "fields": [
+                    {
+                      "name": "grounded",
+                      "expression": "`grounded`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "grounded",
+                  "displayName": "Groundedness",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Groundedness",
+                "showDescription": true,
+                "description": "Latest run; floor 90%"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 2,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_guidelines",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_latest",
+                  "fields": [
+                    {
+                      "name": "follows_guidelines",
+                      "expression": "`follows_guidelines`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "follows_guidelines",
+                  "displayName": "Follows guidelines",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Follows guidelines",
+                "showDescription": true,
+                "description": "Red-team rules; floor 85%"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 2,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_tools",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_latest",
+                  "fields": [
+                    {
+                      "name": "tool_choice",
+                      "expression": "`tool_choice`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "tool_choice",
+                  "displayName": "Tool choice",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Tool choice",
+                "showDescription": true,
+                "description": "Right specialist and tools; floor 90%"
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 2,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_pii",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_latest",
+                  "fields": [
+                    {
+                      "name": "no_pii",
+                      "expression": "`no_pii`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "no_pii",
+                  "displayName": "Answers without PII",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Answers without PII",
+                "showDescription": true,
+                "description": "Security and privacy; must be 100%"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_writes",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_latest",
+                  "fields": [
+                    {
+                      "name": "writes_need_approval",
+                      "expression": "`writes_need_approval`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "writes_need_approval",
+                  "displayName": "Writes waited for approval",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Writes waited for approval",
+                "showDescription": true,
+                "description": "No write ran unapproved; must be 100%"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 5,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_latency",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_latest",
+                  "fields": [
+                    {
+                      "name": "latency_p90_s",
+                      "expression": "`latency_p90_s`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "latency_p90_s",
+                  "displayName": "p90 latency (s)",
+                  "format": {
+                    "type": "number",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "p90 latency (s)",
+                "showDescription": true,
+                "description": "Latest run, 4 questions in flight; target 60 s"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 5,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_tokens",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_latest",
+                  "fields": [
+                    {
+                      "name": "tokens_per_question",
+                      "expression": "`tokens_per_question`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "tokens_per_question",
+                  "displayName": "Billed tokens per question",
+                  "format": {
+                    "type": "number",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 0
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Billed tokens per question",
+                "showDescription": true,
+                "description": "Mean; ceiling 15,000"
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 5,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "quality_trend",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_trend",
+                  "fields": [
+                    {
+                      "name": "started",
+                      "expression": "`started`"
+                    },
+                    {
+                      "name": "avg(value)",
+                      "expression": "AVG(`value`)"
+                    },
+                    {
+                      "name": "metric",
+                      "expression": "`metric`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "started",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Evaluation run"
+                },
+                "y": {
+                  "fieldName": "avg(value)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Pass rate",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "color": {
+                  "fieldName": "metric",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Scorer"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Quality across evaluation runs",
+                "showDescription": true,
+                "description": "Each point is one full run of the 33-case set; floors are in docs/success-metrics.md"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 8,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "gateway_requests",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_gateway",
+                  "fields": [
+                    {
+                      "name": "day",
+                      "expression": "`day`"
+                    },
+                    {
+                      "name": "sum(requests)",
+                      "expression": "SUM(`requests`)"
+                    },
+                    {
+                      "name": "source",
+                      "expression": "`source`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "day",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Day"
+                },
+                "y": {
+                  "fieldName": "sum(requests)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Model requests"
+                },
+                "color": {
+                  "fieldName": "source",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Source"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Model gateway requests: production vs testing",
+                "showDescription": true,
+                "description": "Production = the deployed app's service principal; testing = evaluations and local runs"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 8,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_questions",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_app",
+                  "fields": [
+                    {
+                      "name": "questions",
+                      "expression": "`questions`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "questions",
+                  "displayName": "Questions answered in production"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Questions answered in production",
+                "showDescription": true,
+                "description": "Agents delivered and their use: 1 agent live"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 13,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_conversations",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_app",
+                  "fields": [
+                    {
+                      "name": "conversations",
+                      "expression": "`conversations`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "conversations",
+                  "displayName": "Conversations"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Conversations",
+                "showDescription": true,
+                "description": "Adoption. Users aren't recorded in traces, sessions are"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 13,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_thumbs_rate",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_app",
+                  "fields": [
+                    {
+                      "name": "thumbs_up_rate",
+                      "expression": "`thumbs_up_rate`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "thumbs_up_rate",
+                  "displayName": "Thumbs-up rate",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Thumbs-up rate",
+                "showDescription": true,
+                "description": "Satisfaction, from the business UI"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 13,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_thumbs_given",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_app",
+                  "fields": [
+                    {
+                      "name": "thumbs_given",
+                      "expression": "`thumbs_given`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "thumbs_given",
+                  "displayName": "Feedback collected"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Feedback collected",
+                "showDescription": true,
+                "description": "Thumbs on traces: the expert feedback measure"
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 13,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "not_measured",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### Not measured yet (honesty rule)\n",
+                "\n",
+                "- **Less manual effort and faster cycle time:** needs timed runs of three scripted tasks, labelled as simulated.\n",
+                "- **Reusable delivery:** the agent template comes in Phase 8.\n",
+                "- **Production traces keep no spans** on this workspace; quality comes from evaluation runs (see docs/agent-card.md)."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 16,
+            "width": 12,
+            "height": 3
+          }
+        }
+      ]
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "canvasBackgroundColor": {
+        "light": "#FAFAF8",
+        "dark": "#1B2126"
+      },
+      "widgetBackgroundColor": {
+        "light": "#FFFFFF",
+        "dark": "#11171C"
+      },
+      "widgetBorderColor": {
+        "light": "#FFFFFF",
+        "dark": "#11171C"
+      },
+      "fontColor": {
+        "light": "#1B2126",
+        "dark": "#E8ECF0"
+      },
+      "selectionColor": {
+        "light": "#2272B4",
+        "dark": "#8ACAFF"
+      },
+      "visualizationColors": [
+        "#0072B2",
+        "#E69F00",
+        "#009E73",
+        "#CC79A7",
+        "#56B4E9",
+        "#7F7F7F"
+      ],
+      "widgetHeaderAlignment": "LEFT"
+    }
+  }
+}

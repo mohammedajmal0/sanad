@@ -33,6 +33,12 @@ resources:
       warehouse_id: ${var.warehouse_id}
       dataset_catalog: sanad # dataset queries use bare names (FROM invoice_issues);
       dataset_schema: gold   # these two fill in the catalog and schema
+    sanad_metrics: # Phase 7: the eight success measures; reads only sanad.ops summary tables
+      display_name: Sanad success metrics
+      file_path: dashboards/sanad_metrics.lvdash.json
+      warehouse_id: ${var.warehouse_id}
+      dataset_catalog: sanad
+      dataset_schema: ops # refreshed on demand by monitoring/refresh_metrics.py
 
   genie_spaces:
     sanad_ops_analytics: # the Ops Analytics specialist (Phase 4); queries run as the asking user

@@ -20,5 +20,5 @@ Every responsibility and qualification in the JD has a concrete artifact you can
 | LLM providers (Anthropic, OpenAI, Azure OpenAI) | Claude on Databricks-hosted endpoints; second model behind the same gateway for fallback | 4, 7 | |
 | Containers, microservices, event-driven design | Mock enterprise services in Docker for local dev; ticket events as a stream | 1, 5 | |
 | Document architecture, data flows, prompts, tools, procedures, limitations | `docs/` folder: architecture, decision records, runbook, agent card with known limitations | every phase | [docs/](.) |
-| Coach internal teams | Reusable agent template plus a 30-minute "build your first agent" walkthrough | 8 | |
-| Explain trade-offs to technical and non-technical audiences | Two demo scripts: a 5-minute business version and a 20-minute technical deep dive | 8 | |
+| Coach internal teams | Reusable agent template plus a 30-minute "build your first agent" walkthrough | 8 | [agent-template.md](agent-template.md), [walkthrough.md](walkthrough.md) |
+| Explain trade-offs to technical and non-technical audiences | Two demo scripts: a 5-minute business version and a 20-minute technical deep dive | 8 | [demo-scripts.md](demo-scripts.md) |

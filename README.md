@@ -29,8 +29,8 @@ A governed multi-agent copilot for **Najm Supply Co.**, a fictional B2B distribu
 | [evals/](evals/) | Datasets, scorers, red-team set, `run_eval.py` | 6 |
 | [monitoring/](monitoring/) | Production monitoring config, dashboard queries | 7 |
 | [tests/](tests/) | Unit and integration tests | every phase |
-| [.github/workflows/](.github/workflows/) | `ci.yml` (lint, test, eval gate) and `deploy.yml` | 7 |
-| `databricks.yml` | Bundle: pipelines, jobs, apps, dashboards; dev and prod targets | 7 |
+| [.github/workflows/](.github/workflows/) | `ci.yml`: lint, tests, red-team gate, deploy from `main` | 6, 7 |
+| `databricks.yml` | Bundle: pipeline, job, mock systems app, dashboards, Genie space (`dev` target) | 1–7 |
 
 ## Docs
 
@@ -42,9 +42,10 @@ A governed multi-agent copilot for **Najm Supply Co.**, a fictional B2B distribu
 - [Decision records](docs/adr/) · [Runbook](docs/runbook.md) · [Access matrix](docs/access-matrix.md)
 - [Reading list](docs/reading-list.md): official docs to read before each phase
 - [Learning log](docs/learning-log/): notes, mistakes and interview questions, one file per phase
+- [Agent template](docs/agent-template.md) · [30-minute walkthrough](docs/walkthrough.md) · [Demo scripts](docs/demo-scripts.md) (5-minute business, 20-minute technical)
 
 ## Working on this repo
 
 [CLAUDE.md](CLAUDE.md) sets the rules for Claude Code here. It works in the Learning output style. Since Phase 3 it also writes the judgement calls (business rules, prompts, thresholds) and records each one in the learning log as Claude-written, so the owner knows what to be ready to defend. Each task follows the same loop: read first, plan, build, break it on purpose, explain back (`/explain-back`), record (`/adr`).
 
-Screenshots and a recorded 5-minute demo arrive in Phase 8.
+The demo scripts are in [docs/demo-scripts.md](docs/demo-scripts.md); a recording follows once they're rehearsed.

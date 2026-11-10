@@ -4,20 +4,23 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
-    <title>Agent Bricks Workbench</title>
-    <link rel="stylesheet" href="/ui-assets/styles.css?v=7" />
+    <title>Sanad</title>
+    <link rel="stylesheet" href="/ui-assets/styles.css?v=8" />
   </head>
-  <body>
+  <body class="business-ui">
     <div class="app-shell">
       <header class="topbar">
         <div class="brand-lockup">
-          <span class="brand-mark" aria-hidden="true">AB</span>
+          <span class="brand-mark" aria-hidden="true">S</span>
           <div class="brand-copy">
-            <h1>Agent Bricks Workbench</h1>
-            <p class="brand-sub" id="brand-sub">LangGraph</p>
+            <h1>Sanad</h1>
+            <p class="brand-sub" id="brand-sub">Najm Supply Co.</p>
           </div>
         </div>
         <div class="header-actions">
+          <button id="dev-toggle" class="text-button" type="button" aria-pressed="false" title="Show developer panes (also ?dev=1)">
+            Developer
+          </button>
           <div class="viewer-chip" aria-describedby="viewer-tip">
             <p id="viewer-value">Loading viewer…</p>
             <span class="avatar" id="viewer-avatar" aria-hidden="true"></span>
@@ -204,10 +207,18 @@
               <div class="empty-mark" aria-hidden="true">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.3"/><ellipse cx="12" cy="12" rx="10" ry="4.3" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.3" transform="rotate(120 12 12)"/></svg>
               </div>
-              <h2>Start a conversation</h2>
-              <p>Chat with your project agent from agent/agent.py. Every mode runs its instructions and tools; the model picker changes only the model for this page.</p>
-              <p class="empty-prompts-label">What would you like to test?</p>
+              <h2>Ask Sanad</h2>
+              <p class="business-empty-copy">Answers cite the records and policies they use. Writes pause for your approval.</p>
+              <p class="empty-prompts-label">Try asking</p>
               <div class="prompt-grid">
+                <button type="button" data-prompt="Why was Al-Faris Trading invoiced twice in September?">Duplicate invoices</button>
+                <button type="button" data-prompt="Draft a credit note for Al-Faris Trading's duplicate invoice INV-050001.">Draft a credit note</button>
+                <button type="button" data-prompt="Which region had the most late deliveries last quarter?">Late deliveries</button>
+              </div>
+              <div class="dev-only prompt-grid" hidden>
+                <button type="button" data-sample="answer">Sample answer (no agent call)</button>
+                <button type="button" data-sample="approval">Sample approval (no agent call)</button>
+                <button type="button" data-sample="low">Sample low confidence (no agent call)</button>
                 <button type="button" data-prompt="Use the get_current_time tool and explain what you did.">Use a tool</button>
                 <button type="button" data-prompt="Remember in this conversation that my launch color is indigo. Do not use long-term memory.">Test session</button>
                 <button type="button" data-prompt="Send a message to demo@databricks.com saying the Agent Bricks demo is ready. Use the send_message tool.">Trigger approval</button>
@@ -215,14 +226,14 @@
             </div>
           </div>
 
-          <div id="approval-panel" class="approval-panel" hidden>
-            <div>
-              <p class="eyebrow">Human approval required</p>
+          <div id="approval-panel" class="approval-panel" hidden role="region" aria-labelledby="approval-title">
+            <div class="approval-copy">
+              <p class="eyebrow" id="approval-title">Approval needed</p>
               <p id="approval-summary">A tool is waiting for a decision.</p>
             </div>
             <div class="approval-actions">
               <button id="reject-action" class="text-button" type="button">Reject</button>
-              <button id="approve-action" class="text-button" type="button">Approve</button>
+              <button id="approve-action" class="text-button approve-primary" type="button">Approve</button>
             </div>
           </div>
 
@@ -320,6 +331,6 @@
     </div>
 
     <script src="/ui-assets/markdown-it-15.0.2.min.js" defer></script>
-    <script src="/ui-assets/app.js?v=7" defer></script>
+    <script src="/ui-assets/app.js?v=8" defer></script>
   </body>
 </html>

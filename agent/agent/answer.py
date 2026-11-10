@@ -10,6 +10,7 @@ import json
 import re
 from typing import Any
 
+import mlflow
 from langchain.agents.middleware import AgentMiddleware
 from langchain_core.exceptions import OutputParserException
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
@@ -103,13 +104,17 @@ class StructuredAnswer(AgentMiddleware):
                 answer.citations.append(c)
                 known.add(c.ref)
         final = state["messages"][-1]
+        # This turn's MLflow trace (agent.run_agent's start_trace), so the chat UI's thumbs land on
+        # the exact trace that produced this answer. None when tracing is off.
+        span = mlflow.get_current_active_span()
+        trace = {"trace_id": span.trace_id} if span else {}
         # Same id: replaces the free-text reply, so the chat shows the answer once.
         return {
             "messages": [
                 AIMessage(
                     id=final.id,
                     content=answer.answer,
-                    additional_kwargs={"answer": answer.model_dump()},
+                    additional_kwargs={"answer": answer.model_dump(), **trace},
                 )
             ]
         }

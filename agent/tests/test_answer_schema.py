@@ -54,6 +54,26 @@ def test_a_declining_label_gets_the_fixed_reply_not_the_models_words():
     assert "unlimited" not in reply.content
 
 
+def test_the_answer_carries_its_turns_trace_id(monkeypatch):
+    class Formatter:
+        def with_structured_output(self, *args, **kwargs):
+            return self
+
+        async def ainvoke(self, messages):
+            return Answer(answer="No.", citations=[], confidence="low", next_action="none")
+
+    class Span:
+        trace_id = "tr-0123456789abcdef0123456789abcdef"
+
+    state = {"messages": [HumanMessage("Hi"), AIMessage("No.", id="a1")]}
+    monkeypatch.setattr("agent.answer.mlflow.get_current_active_span", lambda: Span())
+    reply = asyncio.run(StructuredAnswer(Formatter()).aafter_agent(state, None))["messages"][0]
+    assert reply.additional_kwargs["trace_id"] == Span.trace_id  # the chat UI's thumbs use it
+    monkeypatch.setattr("agent.answer.mlflow.get_current_active_span", lambda: None)
+    reply = asyncio.run(StructuredAnswer(Formatter()).aafter_agent(state, None))["messages"][0]
+    assert "trace_id" not in reply.additional_kwargs  # tracing off: no id, no crash
+
+
 def test_a_genie_answer_is_cited_as_a_query():
     link = {"source": "query", "ref": "https://host/genie/spaces/x", "title": "Late rate"}
     assert Answer(answer="Jeddah.", citations=[link], confidence="high", next_action="none")

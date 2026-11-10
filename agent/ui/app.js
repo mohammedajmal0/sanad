@@ -73,12 +73,87 @@ const elements = {
   toolsBack: document.querySelector("#tools-back"),
   toolsRefresh: document.querySelector("#tools-refresh"),
   toolsBody: document.querySelector("#tools-body"),
+  devToggle: document.querySelector("#dev-toggle"),
 };
 
-// The framework label shown in the header subtitle, next to the host.
+// The framework label shown in the header subtitle, next to the host (dev mode).
 const AGENT_FRAMEWORK = "LangGraph";
-
+const DEV_STORAGE_KEY = "sanad-dev-ui";
 const SESSION_STORAGE_KEY = "databricks-agentbricks-session-id";
+
+// Hard-coded samples so the business UI can be reviewed without calling the agent
+// (a live eval is measuring latency in another session).
+const SAMPLE_ANSWER = {
+  answer:
+    "Al-Faris Trading was invoiced twice for the same September order: INV-027711 and INV-050001 both bill ORD-027711. The second invoice is a duplicate.",
+  citations: [
+    { source: "record", ref: "INV-027711", title: "get_invoices" },
+    { source: "record", ref: "INV-050001", title: "get_invoices" },
+    { source: "record", ref: "ORD-027711", title: "get_invoices" },
+    {
+      source: "document",
+      ref: "fin-duplicate-invoices",
+      title: "Duplicate Invoice Handling",
+    },
+  ],
+  confidence: "high",
+  next_action: "draft_credit_note",
+};
+
+const SAMPLE_LOW_ANSWER = {
+  answer: "The tools did not return enough to answer that.",
+  citations: [],
+  confidence: "low",
+  next_action: "ask_user",
+};
+
+const SAMPLE_INTERRUPT = {
+  id: "sample-int-1",
+  type: "interrupt",
+  value: {
+    action_requests: [
+      {
+        name: "create_credit_note",
+        args: {
+          amount_sar: 1440.71,
+          invoice_id: "INV-050001",
+          reason_code: "DUP",
+          reason: "Duplicate invoice",
+        },
+        description:
+          "Draft a credit note of SAR 1440.71 for INV-050001 (DUP: Duplicate invoice)? The ERP then holds it for the approver the Credit Note and Refund Policy requires.",
+      },
+    ],
+  },
+};
+
+function isDevMode() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.has("dev")) return params.get("dev") !== "0";
+  return localStorage.getItem(DEV_STORAGE_KEY) === "1";
+}
+
+function applyDevMode(enabled) {
+  document.body.classList.toggle("business-ui", !enabled);
+  document.body.classList.toggle("dev-ui", enabled);
+  if (elements.devToggle) {
+    elements.devToggle.setAttribute("aria-pressed", String(enabled));
+    elements.devToggle.textContent = enabled ? "Business view" : "Developer";
+  }
+  document.querySelectorAll(".dev-only").forEach((node) => {
+    node.hidden = !enabled;
+  });
+  if (elements.brandSub) {
+    elements.brandSub.textContent = enabled
+      ? `${AGENT_FRAMEWORK} · ${window.location.host}`
+      : "Najm Supply Co.";
+  }
+}
+
+function setDevMode(enabled) {
+  localStorage.setItem(DEV_STORAGE_KEY, enabled ? "1" : "0");
+  applyDevMode(enabled);
+}
 
 function newSessionId() {
   return crypto.randomUUID();
@@ -513,6 +588,24 @@ function messageName(role, label) {
   return "Agent";
 }
 
+function flashButtonLabel(button, label, restore = "Copy") {
+  const span = button.querySelector("span");
+  if (!span) return;
+  span.textContent = label;
+  setTimeout(() => {
+    span.textContent = restore;
+  }, 1200);
+}
+
+async function copyText(value) {
+  try {
+    await navigator.clipboard.writeText(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Hover actions under an agent message. "View trace" is intentionally omitted
 // until the demo backend exposes a trace URL (per design feedback).
 function buildMessageActions(textEl) {
@@ -524,21 +617,168 @@ function buildMessageActions(textEl) {
   copy.innerHTML =
     '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
   copy.addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText(textEl.dataset.source ?? textEl.textContent ?? "");
-    } catch {
-      /* clipboard may be unavailable */
-    }
-    const span = copy.querySelector("span");
-    if (span) {
-      span.textContent = "Copied";
-      setTimeout(() => {
-        span.textContent = "Copy";
-      }, 1200);
+    if (await copyText(textEl.dataset.source ?? textEl.textContent ?? "")) {
+      flashButtonLabel(copy, "Copied");
     }
   });
   actions.append(copy);
   return actions;
+}
+
+function extractAnswer(message) {
+  const raw = message?.additional_kwargs?.answer ?? message?.answer;
+  if (!raw || typeof raw !== "object" || typeof raw.answer !== "string") return null;
+  return raw;
+}
+
+function confidenceLabel(confidence) {
+  if (confidence === "low") return "Low — the tools did not answer this";
+  if (confidence === "medium") return "Medium confidence";
+  return "High confidence";
+}
+
+function buildCitationChip(citation) {
+  const chip = document.createElement("span");
+  chip.className = `citation-chip source-${citation.source || "record"}`;
+  const source = citation.source || "record";
+  const ref = citation.ref || "";
+  const title = citation.title || "";
+
+  if (source === "document") {
+    const refEl = document.createElement("span");
+    refEl.className = "citation-ref";
+    refEl.textContent = ref;
+    chip.append(refEl);
+    if (title) {
+      const titleEl = document.createElement("span");
+      titleEl.className = "citation-title";
+      titleEl.textContent = title;
+      chip.append(titleEl);
+    }
+    return chip;
+  }
+
+  if (source === "query" && ref) {
+    const link = document.createElement("a");
+    link.className = "citation-link";
+    link.href = ref;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = title || "Open query";
+    chip.append(link);
+    return chip;
+  }
+
+  const label = document.createElement("span");
+  label.className = "citation-ref";
+  label.textContent = ref || title || "record";
+  chip.append(label);
+  if (ref) {
+    const copy = document.createElement("button");
+    copy.type = "button";
+    copy.className = "citation-copy";
+    copy.setAttribute("aria-label", `Copy ${ref}`);
+    copy.textContent = "Copy";
+    copy.addEventListener("click", async () => {
+      if (await copyText(ref)) flashButtonLabel(copy, "Copied", "Copy");
+    });
+    chip.append(copy);
+  }
+  return chip;
+}
+
+function buildThumbs(traceId) {
+  const row = document.createElement("div");
+  row.className = "answer-feedback";
+  row.setAttribute("role", "group");
+  row.setAttribute("aria-label", "Was this answer helpful?");
+  const note = document.createElement("p");
+  note.className = "feedback-note";
+  // Trace ids are not on the invoke response yet (needs agent/adapter), so thumbs stay stubbed.
+  note.textContent = traceId
+    ? ""
+    : "Feedback needs this turn’s trace id (not exposed yet).";
+  for (const [value, label] of [
+    ["up", "Thumbs up"],
+    ["down", "Thumbs down"],
+  ]) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "feedback-button";
+    button.dataset.value = value;
+    button.setAttribute("aria-label", label);
+    button.textContent = value === "up" ? "👍" : "👎";
+    button.disabled = !traceId;
+    button.title = traceId
+      ? label
+      : "Unavailable until the turn’s MLflow trace id reaches the UI";
+    button.addEventListener("click", () => submitThumbs(traceId, value, button, row));
+    row.append(button);
+  }
+  if (!traceId) row.append(note);
+  return row;
+}
+
+async function submitThumbs(traceId, value, button, row) {
+  if (!traceId) return;
+  row.querySelectorAll(".feedback-button").forEach((node) => {
+    node.disabled = true;
+  });
+  try {
+    const response = await fetch(demoUrl("/api/demo/feedback"), {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json", ...routingHeaders() },
+      body: JSON.stringify({ trace_id: traceId, value }),
+    });
+    if (!response.ok) {
+      const detail = await response.json().catch(() => ({}));
+      throw new Error(detail.detail || `Feedback failed (${response.status})`);
+    }
+    button.classList.add("selected");
+    const note = row.querySelector(".feedback-note") || document.createElement("p");
+    note.className = "feedback-note";
+    note.textContent = "Thanks — saved to this turn’s trace.";
+    if (!note.parentElement) row.append(note);
+  } catch (error) {
+    row.querySelectorAll(".feedback-button").forEach((node) => {
+      node.disabled = false;
+    });
+    appendError(error);
+  }
+}
+
+function mountAnswerCard(wrapper, answer, { traceId = null } = {}) {
+  if (!wrapper || !answer) return;
+  wrapper.classList.add("has-answer-card");
+  wrapper.querySelector(".answer-card")?.remove();
+  const card = document.createElement("div");
+  card.className = "answer-card";
+  card.setAttribute("role", "region");
+  card.setAttribute("aria-label", "Answer");
+
+  const body = document.createElement("div");
+  body.className = "answer-body message-content";
+  renderMessageText(body, answer.answer || "");
+  card.append(body);
+
+  if (Array.isArray(answer.citations) && answer.citations.length) {
+    const list = document.createElement("div");
+    list.className = "citation-list";
+    list.setAttribute("aria-label", "Citations");
+    answer.citations.forEach((citation) => list.append(buildCitationChip(citation)));
+    card.append(list);
+  }
+
+  const meta = document.createElement("div");
+  meta.className = "answer-meta";
+  const badge = document.createElement("span");
+  badge.className = `confidence-badge confidence-${answer.confidence || "medium"}`;
+  badge.textContent = confidenceLabel(answer.confidence);
+  meta.append(badge);
+  card.append(meta);
+  card.append(buildThumbs(traceId));
+  wrapper.append(card);
 }
 
 const markdown = window.markdownit({ html: false }).disable("image");
@@ -548,14 +788,23 @@ function renderMessageText(element, content) {
   element.innerHTML = markdown.render(content);
 }
 
-function appendMessage(role, content, label, { time } = {}) {
+function appendMessage(role, content, label, { time, answer, traceId } = {}) {
   hideEmptyState();
   const wrapper = document.createElement("article");
   wrapper.className = `message ${role}`;
   const text = document.createElement("div");
   text.className = "message-content";
-  if (role === "assistant") renderMessageText(text, content);
-  else text.textContent = content;
+  const display = answer?.answer || content;
+  if (role === "assistant") {
+    if (answer) {
+      text.hidden = true;
+      text.dataset.source = answer.answer || "";
+    } else {
+      renderMessageText(text, display);
+    }
+  } else {
+    text.textContent = display;
+  }
 
   if (role === "user") {
     wrapper.append(text);
@@ -570,8 +819,10 @@ function appendMessage(role, content, label, { time } = {}) {
     stamp.textContent = time || formatClock();
     head.append(name, stamp);
     wrapper.append(head, text);
-    if (role === "assistant") wrapper.append(buildMessageActions(text));
+    if (role === "assistant" && !answer) wrapper.append(buildMessageActions(text));
   }
+
+  if (answer) mountAnswerCard(wrapper, answer, { traceId });
 
   elements.chatLog.append(wrapper);
   elements.chatLog.scrollTop = elements.chatLog.scrollHeight;
@@ -606,16 +857,23 @@ function appendDelta(content) {
   elements.chatLog.scrollTop = elements.chatLog.scrollHeight;
 }
 
-function finishDraft(finalText = "") {
-  if (!state.draft) return false;
+function finishDraft(finalText = "", { answer, traceId } = {}) {
+  if (!state.draft) return null;
   if (finalText) {
     state.draftText = finalText;
     state.lastAssistantText = finalText;
     renderMessageText(state.draft.text, finalText);
   }
+  if (answer) {
+    state.draft.text.hidden = true;
+    state.draft.text.dataset.source = answer.answer || finalText;
+    state.draft.wrapper.querySelector(".message-actions")?.remove();
+    mountAnswerCard(state.draft.wrapper, answer, { traceId });
+  }
   state.draft.wrapper.classList.remove("streaming");
+  const finished = state.draft;
   state.draft = null;
-  return true;
+  return finished;
 }
 
 function toolSummary(message) {
@@ -630,14 +888,16 @@ function handleAgentMessage(message) {
   const role = normalizeRole(message);
   if (role === "user") return;
   if (role === "assistant") {
-    const text = extractText(message?.content);
+    const answer = extractAnswer(message);
+    const text = answer?.answer || extractText(message?.content);
     const reasoning = extractReasoning(message) || extractReasoning(message?.content);
     if (reasoning) renderReasoning(startDraft().text, reasoning);
     if (!text && !message?.tool_calls?.length) return;
-    const finished = finishDraft(text);
+    const traceId = message?.additional_kwargs?.trace_id || null;
+    const finished = finishDraft(text, { answer, traceId });
     if (text && !finished) {
       state.lastAssistantText = text;
-      appendMessage("assistant", text, "Agent");
+      appendMessage("assistant", text, "Sanad", { answer, traceId });
     }
     if (message?.tool_calls?.length) appendMessage("tool", toolSummary(message), "Tool request");
     return;
@@ -649,7 +909,12 @@ function interruptSummary(interrupt) {
   const requests = interrupt?.value?.action_requests || [];
   if (!requests.length) return "The agent paused and needs a decision.";
   return requests
-    .map((request) => `${request.name || "tool"} ${formatJson(request.args || {})}`)
+    .map((request) => {
+      if (typeof request.description === "string" && request.description.trim()) {
+        return request.description.trim();
+      }
+      return `${request.name || "tool"} ${formatJson(request.args || {})}`;
+    })
     .join(" · ");
 }
 
@@ -658,7 +923,42 @@ function handleInterrupt(interrupt) {
   state.pendingInterrupt = interrupt;
   elements.approvalSummary.textContent = interruptSummary(interrupt);
   elements.approvalPanel.hidden = false;
-  appendMessage("system", interruptSummary(interrupt), "Approval required");
+  elements.approveAction.focus();
+}
+
+function showSample(kind) {
+  if (state.busy) return;
+  clearChat({ recordEvent: false });
+  if (kind === "low") {
+    appendMessage(
+      "user",
+      "What is the delivery promise for a customer I have not named?",
+      "You",
+    );
+    appendMessage("assistant", SAMPLE_LOW_ANSWER.answer, "Sanad", {
+      answer: SAMPLE_LOW_ANSWER,
+    });
+    addEvent("sample.low", SAMPLE_LOW_ANSWER);
+    return;
+  }
+  if (kind === "approval") {
+    appendMessage(
+      "user",
+      "Draft a credit note for Al-Faris Trading’s duplicate invoice INV-050001.",
+      "You",
+    );
+    appendMessage("assistant", SAMPLE_ANSWER.answer, "Sanad", { answer: SAMPLE_ANSWER });
+    handleInterrupt(SAMPLE_INTERRUPT);
+    addEvent("sample.approval", SAMPLE_INTERRUPT);
+    return;
+  }
+  appendMessage(
+    "user",
+    "Why was Al-Faris Trading invoiced twice in September?",
+    "You",
+  );
+  appendMessage("assistant", SAMPLE_ANSWER.answer, "Sanad", { answer: SAMPLE_ANSWER });
+  addEvent("sample.answer", SAMPLE_ANSWER);
 }
 
 function handleEvent(event) {
@@ -1640,6 +1940,20 @@ async function resume(decision) {
     appendError(new Error("No paused run is loaded for the current routing session."));
     return;
   }
+  // Sample interrupts are UI-only (no live agent while an eval measures latency).
+  if (state.pendingInterrupt?.id === "sample-int-1") {
+    appendMessage(
+      "system",
+      decision === "approve"
+        ? "Approved (sample — no live resume)."
+        : "Rejected (sample — no live resume).",
+      "Human decision",
+    );
+    state.pendingInterrupt = null;
+    elements.approvalPanel.hidden = true;
+    addEvent("sample.resume", { decision });
+    return;
+  }
   const payload =
     decision === "approve"
       ? { resume: { decisions: [{ type: "approve" }] } }
@@ -1953,6 +2267,10 @@ document.querySelectorAll("[data-prompt]").forEach((button) => {
   });
 });
 
+document.querySelectorAll("[data-sample]").forEach((button) => {
+  button.addEventListener("click", () => showSample(button.dataset.sample));
+});
+
 elements.copySession.addEventListener("click", async () => {
   await navigator.clipboard.writeText(ensureSessionId());
   const label = elements.copySession.querySelector("span");
@@ -2068,8 +2386,10 @@ elements.copyEventDetail.addEventListener("click", async () => {
   }
 });
 
-// Header subtitle: framework · host (host is only known client-side).
-if (elements.brandSub) elements.brandSub.textContent = `${AGENT_FRAMEWORK} · ${window.location.host}`;
+applyDevMode(isDevMode());
+elements.devToggle?.addEventListener("click", () => {
+  setDevMode(!document.body.classList.contains("dev-ui"));
+});
 elements.approveAction.addEventListener("click", () => resume("approve"));
 elements.rejectAction.addEventListener("click", () => resume("reject"));
 elements.resumeSession.addEventListener("click", () => resume("approve"));
@@ -2083,3 +2403,11 @@ loadConfig().catch((error) => {
   // The Tools row doesn't depend on the runtime config, so load it even when config fails.
   void loadTools();
 });
+
+// Optional: ?sample=answer|approval|low loads a hard-coded turn for UI review.
+const sampleParam = new URLSearchParams(window.location.search).get("sample");
+if (sampleParam) {
+  window.addEventListener("DOMContentLoaded", () => showSample(sampleParam), { once: true });
+  // app.js is deferred, so DOM is already ready; run now as well.
+  showSample(sampleParam);
+}

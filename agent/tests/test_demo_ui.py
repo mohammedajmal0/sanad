@@ -626,6 +626,61 @@ def test_open_session_rejects_another_actor(monkeypatch):
     assert response.json()["detail"] == "Session belongs to another actor."
 
 
+def test_business_ui_answer_approval_and_feedback(monkeypatch):
+    """Phase 7 polish: Answer/approval cards, real questions, samples for developers, thumbs."""
+    client = _client(monkeypatch)
+
+    index = client.get("/").text
+    assert "<title>Sanad</title>" in index
+    assert 'class="business-ui"' in index
+    assert 'id="dev-toggle"' in index
+    assert 'data-prompt="Why was Al-Faris Trading invoiced twice in September?"' in index
+    # Canned answers would read as real data to a business user: developer view only.
+    assert (
+        '<div class="dev-only prompt-grid" hidden>\n                <button type="button" data-sample="answer">'
+        in index
+    )
+    assert 'id="approval-panel"' in index
+    assert 'aria-labelledby="approval-title"' in index
+
+    app_script = client.get("/ui-assets/app.js").text
+    assert "function mountAnswerCard(" in app_script
+    assert "function buildCitationChip(" in app_script
+    assert "function showSample(" in app_script
+    assert "SAMPLE_ANSWER" in app_script
+    assert "fin-duplicate-invoices" in app_script
+    assert "INV-027711" in app_script
+    assert "user_thumbs" in app_script or "/api/demo/feedback" in app_script
+    assert 'demoUrl("/api/demo/feedback")' in app_script
+    assert "additional_kwargs?.trace_id" in app_script
+    assert "function applyDevMode(" in app_script
+    assert "request.description" in app_script
+    # Resume path unchanged: Approve still uses input.resume, not a new chat message.
+    assert 'resume: { decisions: [{ type: "approve" }] }' in app_script
+
+    styles = client.get("/ui-assets/styles.css").text
+    assert ".answer-card" in styles
+    assert ".citation-chip" in styles
+    assert ".confidence-badge" in styles
+    assert "body.business-ui .capabilities-block" in styles
+
+    logged = []
+    monkeypatch.setattr("runtime.ui.mlflow.log_feedback", lambda **kw: logged.append(kw))
+    trace = "tr-0123456789abcdef0123456789abcdef"
+    ok = client.post("/api/demo/feedback", json={"value": "down", "trace_id": trace})
+    assert ok.status_code == 200
+    assert logged[0]["trace_id"] == trace and logged[0]["name"] == "user_thumbs"
+    assert logged[0]["value"] is False and logged[0]["source"].source_type == "HUMAN"
+    # Trust boundary: no trace id, or one that isn't an MLflow trace id, never reaches MLflow.
+    for bad in (
+        {"value": "up"},
+        {"value": "up", "trace_id": "../../etc"},
+        {"value": "meh", "trace_id": trace},
+    ):
+        assert client.post("/api/demo/feedback", json=bad).status_code == 422
+    assert len(logged) == 1
+
+
 def test_demo_tools_route_lists_bindings_local_tools_and_add_commands(monkeypatch, tmp_path):
     (tmp_path / "agent.toml").write_text(
         'schema_version = 1\n\n[agent]\nname = "demo"\nframework = "langgraph"\n\n'

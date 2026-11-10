@@ -11,9 +11,11 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+import mlflow
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from mlflow.entities import AssessmentSource
 from pydantic import BaseModel, Field
 
 from databricks_agentkit import workspace_client
@@ -54,6 +56,13 @@ class MemorySearchRequest(BaseModel):
 
 class SessionItemsRequest(BaseModel):
     items: list[dict[str, Any]] = Field(min_length=1)
+
+
+class FeedbackRequest(BaseModel):
+    """Thumbs on an answer, for the trace id the answer message carried (agent/answer.py)."""
+
+    value: str = Field(pattern=r"^(up|down)$")
+    trace_id: str = Field(pattern=r"^tr-[0-9a-f]{8,64}$")
 
 
 _USER_HEADERS = ("x-forwarded-email", "x-forwarded-user")
@@ -600,6 +609,19 @@ def install_ui(app: FastAPI) -> None:
         # runtime config so the rest of the UI becomes interactive immediately.
         available_models = await asyncio.to_thread(_discover_chat_models)
         return {"default": _default_model(), "available": available_models}
+
+    @app.post("/api/demo/feedback", include_in_schema=False)
+    async def demo_feedback(request: Request, payload: FeedbackRequest) -> dict:
+        """Record thumbs as MLflow human feedback ``user_thumbs`` (True = up) on the turn's trace,
+        with the signed-in user as the source: the thumbs-up rate in docs/success-metrics.md."""
+        await asyncio.to_thread(
+            mlflow.log_feedback,
+            trace_id=payload.trace_id,
+            name="user_thumbs",
+            value=payload.value == "up",
+            source=AssessmentSource(source_type="HUMAN", source_id=_request_actor(request)),
+        )
+        return {"logged": True}
 
     @app.get("/api/demo/tools", include_in_schema=False)
     async def demo_tools() -> dict:

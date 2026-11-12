@@ -88,3 +88,37 @@ These were written by Claude at my request; I must be able to defend them: the S
 1. You consolidate many engineering logs into one guide. How do you make sure the rewrite did not change a fact?
 2. Why write technical documentation in a controlled language like Simplified Technical English, and what does it cost?
 3. A derived document and its source disagree. Which one wins, and how do you make that clear to readers?
+
+### 2026-11-12: Public-readiness audit, public README and MIT license
+
+**What we built:**
+- A rewritten [README.md](../../README.md) for a first-time visitor. It covers the pitch, one worked question (the Al-Faris duplicate invoice), a trimmed architecture diagram, a capability table linked to evidence, evaluation results with their open gaps, phase status, a repo map, and "Run it" steps with and without Databricks.
+- An MIT [LICENSE](../../LICENSE).
+- `main` fast-forwarded to `phase-4-agent`, so visitors see the finished project.
+
+**Audit result: safe to make public.**
+- **History:** I scanned all 53 commits and the deleted files for tokens, private keys, passwords and workspace hosts. Nothing was found, and `.env` and `.databricks/` were never committed.
+- **Identifiers:** the IDs that remain (the agent's service principal, the experiment, the Genie space, the run IDs) are not credentials. The README tells anyone who forks the repo to replace them.
+
+**My decisions:**
+- Keep the commit emails.
+- Use MIT.
+- Keep the job-application context public.
+
+**Also fixed:** ruff 0.17 formats Python blocks inside Markdown, so `ruff format --check` failed on a snippet in [runbook.md](../runbook.md). It needed one blank line.
+
+**Claude-written:** Claude wrote the README text, the audit method and its verdict, and the choice of what to leave alone, at my request. The things left alone are the tracker link in `CLAUDE.md` and the claude.ai links in the logs, which outsiders can't open. I must be able to defend each one.
+
+**Not done:** the tracker row. The tracker belongs to another organization, and this account can't read or write its data (checked again on 2026-11-12).
+
+**Key concepts:**
+- **A secret is different from an identifier.** A token or client secret lets someone act. A service-principal ID or space ID only names an object inside a workspace that strangers can't sign in to. The design keeps hosts and credentials out of git: the CLI profile, a bundle `lookup:` by name, and CI `secrets.*`.
+- **Going public publishes the history, not just the tree.** A secret deleted in a later commit is still public. The fix is to rotate the secret, not only to rewrite history. Commit author emails become public too.
+- **A public repo's default branch is the front door.** Work that sits on a feature branch is invisible to most visitors.
+
+**Mistakes:** None recorded.
+
+**Interview questions:**
+1. You're about to open-source an internal repo. What do you check, and why isn't scanning the current files enough?
+2. A workspace ID and a service-principal ID are committed in config. Is that a leak? What would make it one?
+3. A public repo's CI deploys with cloud credentials. How do you stop a fork's pull request from using them?

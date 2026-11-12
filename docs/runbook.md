@@ -98,6 +98,7 @@ Tested on the game day: v13 → v12 in about 40 s, back in 14 s, with no redeplo
 
 ```python
 import mlflow
+
 mlflow.set_registry_uri("databricks-uc")
 mlflow.genai.set_prompt_alias("sanad.prompts.supervisor", alias="production", version=12)
 ```
